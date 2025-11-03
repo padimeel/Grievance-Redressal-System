@@ -3,12 +3,15 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.sqlite3
+*.log
 
-# Virtual env
+# Virtual environment
 grievence_env/
 venv/
 env/
 ENV/
+Scripts/
 
 # Django
 *.db
@@ -16,19 +19,20 @@ db.sqlite3
 media/
 staticfiles/
 
-# VSCode
-.vscode/   
+# VS Code / IDE
+.vscode/
 .idea/
 
 # Env files
 .env
 *.env
 
-# Node (if later)
-node_modules/
-build/
-dist/
-
 # OS
 .DS_Store
 Thumbs.db
+
+# Node / frontend
+node_modules/
+build/
+dist/
+package-lock.json
