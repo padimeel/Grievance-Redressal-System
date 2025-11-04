@@ -2,8 +2,8 @@
 from django.http import JsonResponse
 
 def ping(request):
-    return JsonResponse({"status": "officer OK"})
+    return JsonResponse({ "status": "officer OK" })
 
 urlpatterns = [
-    path('', ping, name='officer-root'),
+    path("", ping, name="officer-root"),
 ]

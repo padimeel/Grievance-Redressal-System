@@ -2,8 +2,8 @@
 from django.http import JsonResponse
 
 def ping(request):
-    return JsonResponse({"status": "adminpanel OK"})
+    return JsonResponse({ "status": "adminpanel OK" })
 
 urlpatterns = [
-    path('', ping, name='adminpanel-root'),
+    path("", ping, name="adminpanel-root"),
 ]
