@@ -103,6 +103,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'   # collectstatic target (production)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

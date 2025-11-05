@@ -17,7 +17,11 @@ media/
 staticfiles/
 
 # VSCode
+<<<<<<< HEAD
 .vscode/
+=======
+.vscode/   
+>>>>>>> origin/ajishaDev
 .idea/
 
 # Env files

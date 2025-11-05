@@ -1,0 +1,51 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #a855f7, #2563eb);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .login-card {
+    width: 900px;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  }
+  
+  .left-panel {
+    background: linear-gradient(135deg, #2563eb, #a855f7);
+    color: white;
+    text-align: center;
+    padding: 60px 40px;
+  }
+  
+  .left-panel h2 {
+    font-size: 2rem;
+    font-weight: 600;
+  }
+  
+  .left-panel p {
+    margin-top: 8px;
+    opacity: 0.9;
+  }
+  
+  .right-panel {
+    padding: 60px 40px;
+  }
+  
+  .btn-submit {
+    background: linear-gradient(to right, #2563eb, #a855f7);
+    color: white;
+    border-radius: 6px;
+    width: 100%;
+    font-weight: 500;
+    transition: 0.3s;
+  }
+  
+  .btn-submit:hover {
+    opacity: 0.9;
+  }
+  

@@ -1,23 +1,15 @@
-# citizen/views.py
-from rest_framework import status, permissions, generics
-from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework import status, permissions, generics
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
-from django.shortcuts import get_object_or_404
-
+from .serializers import RegisterSerializer, GrievanceSerializer
 from .models import Grievance
-from .serializers import GrievanceSerializer, FeedbackSerializer, RegisterSerializer
-
+from rest_framework.permissions import IsAuthenticated
 
 class RegisterView(APIView):
-    """
-    Register a new user and return JWT tokens (access + refresh).
-    """
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -30,23 +22,18 @@ class RegisterView(APIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
 
-# Use the built-in Simple JWT view for login
-LoginView = TokenObtainPairView
-
+    def post(self, request):
+        return Response({"detail": "Use /api/token/ for login (POST username & password)"}, status=status.HTTP_400_BAD_REQUEST)
 
 class GrievanceListCreateView(generics.ListCreateAPIView):
-    """
-    GET: list grievances for the requesting (authenticated) citizen.
-    POST: create a new grievance associated to the authenticated user.
-    """
     serializer_class = GrievanceSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Return grievances only for the current user
         return Grievance.objects.filter(citizen=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
-        # When creating, save the citizen as the request.user.
         serializer.save(citizen=self.request.user)
