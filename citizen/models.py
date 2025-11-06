@@ -1,6 +1,16 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+from django.contrib.auth.models import AbstractUser
+
+class CustomUser(AbstractUser):
+    ROLE_CHOICES = (
+        ('citizen', 'Citizen'),
+        ('officer', 'Officer'),
+        ('admin', 'Admin'),
+    )
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='citizen')
+
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
 

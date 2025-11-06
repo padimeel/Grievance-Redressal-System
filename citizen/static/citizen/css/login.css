@@ -1,4 +1,4 @@
-body {
+/* body {
     font-family: 'Poppins', sans-serif;
     background: linear-gradient(135deg, #a855f7, #2563eb);
     min-height: 100vh;
@@ -47,5 +47,20 @@ body {
   
   .btn-submit:hover {
     opacity: 0.9;
-  }
-  
+  } */
+/* login.css */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+.login-card {
+  min-height: 500px;
+}
+
+.left-panel h2, .left-panel p {
+  text-align: center;
+}
+
+.btn-submit {
+  transition: all 0.3s ease;
+}

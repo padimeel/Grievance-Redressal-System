@@ -61,7 +61,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],   # add frontend templates path here later if needed
+        'DIRS': [BASE_DIR / 'templates'],  # your project-level templates folder
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -98,8 +98,8 @@ USE_I18N = True
 USE_TZ = True
 
 # Static & media
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'   # collectstatic target (production)
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]   # collectstatic target (production)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -150,3 +150,4 @@ LOGGING = {
     },
 }
 
+AUTH_USER_MODEL = 'backend.CustomUser'
