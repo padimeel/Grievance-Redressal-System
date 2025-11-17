@@ -1,0 +1,124 @@
+﻿{% load static %}
+{% load widget_tweaks %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — Grievance Redressal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/x-icon" href="{% static 'images/favicon.ico' %}">
+  <link rel="stylesheet" href="{% static 'css/register.css' %}">
+  <style>
+    /* Prevent scrolling entirely */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gradient-to-r from-blue-200 via-indigo-200 to-purple-200 animate-gradientBG">
+
+  <div class="bg-white shadow-2xl rounded-3xl flex overflow-hidden max-w-4xl w-full h-[85vh]">
+
+    <!-- Left Side -->
+    <div class="hidden md:flex w-1/2 bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex-col justify-center items-center p-12 text-center">
+      <h1 class="text-4xl font-bold mb-4">Join Kerala Grievance Portal</h1>
+      <p class="mb-6 text-lg leading-relaxed">Register to submit grievances, track updates, and stay empowered.</p>
+      <a href="{% url 'accounts:login' %}" class="bg-white/20 hover:bg-white/30 px-6 py-3 rounded-full font-medium transition">Login Here</a>
+    </div>
+
+    <!-- Right Side -->
+    <div class="w-full md:w-1/2 p-12 flex flex-col justify-center overflow-hidden">
+      {% if messages %}
+      <div class="mb-4">
+        {% for msg in messages %}
+          <div class="p-2 rounded text-sm text-center
+                      {% if msg.tags == 'success' %}bg-green-100 text-green-700 border border-green-200{% elif msg.tags == 'error' %}bg-red-100 text-red-700 border border-red-200{% else %}bg-yellow-100 text-yellow-700 border border-yellow-200{% endif %}">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <h2 class="text-3xl font-bold text-gray-800 mb-2 text-center">Create Account</h2>
+      <p class="text-gray-500 mb-6 text-center">Sign up to access your dashboard</p>
+
+      {% if form.non_field_errors %}
+        <div class="mb-4 text-red-700 bg-red-50 border border-red-100 p-3 rounded">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <form method="POST" action="{% url 'accounts:register' %}" class="space-y-4">
+        {% csrf_token %}
+
+        <!-- Username -->
+        <div class="relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 10a4 4 0 100-8 4 4 0 000 8zm0 2c-4 0-6 2-6 4v2h12v-2c0-2-2-4-6-4z"/>
+            </svg>
+          </span>
+          {{ form.username|add_class:"w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-500 transition" }}
+        </div>
+
+        <!-- Email -->
+        <div class="relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2.94 5.94A2 2 0 014.88 5h10.24a2 2 0 011.94.94L10 11 2.94 5.94zM18 8.12v6.76a2 2 0 01-2 2H4a2 2 0 01-2-2V8.12l8 5 8-5z"/>
+            </svg>
+          </span>
+          {{ form.email|add_class:"w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-500 transition" }}
+        </div>
+
+                <!-- Password -->
+        <div class="relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <!-- Lock icon -->
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v8a2 2 0 002 2h10a2 2 0 002-2v-8a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm-2 6V6a2 2 0 114 0v2H8z" clip-rule="evenodd"/>
+            </svg>
+          </span>
+          {{ form.password1|add_class:"w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-500 transition" }}
+          {% if form.password1.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ form.password1.errors|striptags }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="relative">
+          <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
+            <!-- Repeat/Check icon -->
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10 2a8 8 0 108 8h-2a6 6 0 11-6-6V2zM8 12l2 2 4-4-1.5-1.5L10 11l-1.5-1.5L8 12z"/>
+            </svg>
+          </span>
+          {{ form.password2|add_class:"w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-500 transition" }}
+          {% if form.password2.errors %}
+            <p class="text-red-600 text-sm mt-1">{{ form.password2.errors|striptags }}</p>
+          {% endif %}
+        </div>
+
+
+        <button type="submit" class="w-full py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500 hover:from-purple-600 hover:via-pink-600 hover:to-indigo-600 text-white font-bold rounded-lg shadow-lg transition flex items-center justify-center gap-2">
+          Register
+        </button>
+      </form>
+
+      <p class="text-center text-gray-400 text-sm mt-6">Already have an account? 
+        <a href="{% url 'accounts:login' %}" class="text-purple-600 hover:underline">Login</a>
+      </p>
+    </div>
+
+  </div>
+
+</body>
+</html>
+
+
+
+
+
+

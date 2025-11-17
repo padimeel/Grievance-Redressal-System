@@ -1,0 +1,613 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Grievance Portal</title>
+
+  <!-- Tailwind (CDN for dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <!-- Improved theme & small UI helpers -->
+  <style>
+    :root{
+      --bg-start: #071124;      /* muted navy */
+      --bg-end:   #072f2e;      /* deep teal */
+      --brand:    #0ea5a4;      /* primary teal */
+      --brand-dark:#0b8f8b;
+      --accent:   #4f46e5;      /* indigo CTA */
+      --glass:    rgba(255,255,255,0.04);
+      --glass-strong: rgba(255,255,255,0.06);
+      --text-high:#e6eef3;
+      --text-muted:#a8bbc6;
+      --success:  #16a34a;
+      --warning:  #f59e0b;
+    }
+
+    html,body { height:100%; }
+    body {
+      background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+      color: var(--text-high);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    /* refined glass surfaces */
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
+      backdrop-filter: blur(6px);
+    }
+
+    .ui-transition { transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease; }
+    .ui-transition:active { transform: translateY(1px); }
+
+    /* button styles */
+    .btn-primary {
+      background: linear-gradient(90deg, var(--brand), var(--brand-dark));
+      color: white;
+      padding: .45rem .7rem;
+      border-radius: .5rem;
+      box-shadow: 0 8px 20px rgba(13,138,132,0.10);
+    }
+    .btn-primary:hover { opacity: .95; }
+
+    .btn-accent {
+      background: linear-gradient(90deg, var(--accent), #7c3aed);
+      color: white;
+      padding: .45rem .7rem;
+      border-radius: .5rem;
+      box-shadow: 0 8px 20px rgba(79,70,229,0.08);
+    }
+    .btn-accent:hover { opacity: .95; }
+
+    a { color: var(--brand); text-underline-offset: 3px; }
+    a:hover { color: var(--accent); text-decoration: underline; }
+
+    .text-muted { color: var(--text-muted); }
+    .text-high { color: var(--text-high); }
+
+    /* table row hover */
+    table tbody tr { transition: background-color .12s ease; }
+    table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    /* small utility */
+    .badge-muted { background: rgba(255,255,255,0.04); color: var(--text-high); padding: .25rem .5rem; border-radius: .375rem; font-size: .75rem; }
+
+    /* FORCE no underlines site-wide (overrides Tailwind/inline classes) */
+    a,
+    a:link,
+    a:visited,
+    a:hover,
+    a:active,
+    a:focus {
+      text-decoration: none !important;
+      -webkit-text-decoration-skip-ink: none; /* better cross-browser behaviour */
+    }
+
+    /* keep accessible focus-visible outline while still no underline */
+    a:focus-visible {
+      outline: 3px solid rgba(14,165,164,0.12);
+      outline-offset: 2px;
+      text-decoration: none !important;
+    }
+
+    /* -------------------------
+       Search input fix: dark background + readable text
+       ------------------------- */
+    .search-input{
+      background: rgba(255,255,255,0.03);   /* subtle dark field */
+      color: var(--text-high);              /* readable text color from your theme */
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: .5rem .6rem;
+      outline: none;
+      transition: box-shadow .12s ease, border-color .12s ease;
+      -webkit-appearance: none;
+      appearance: none;
+      border-radius: .375rem;
+    }
+
+    /* placeholder */
+    .search-input::placeholder{
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* focus state (accessible) */
+    .search-input:focus{
+      box-shadow: 0 6px 18px rgba(2,6,23,0.45);
+      border-color: rgba(14,165,164,0.18);
+    }
+
+    /* ensure selects show readable text (you had text-black which looked odd on dark bg) */
+    .select-readable { color: var(--text-high); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04); padding: .45rem .6rem; border-radius: .375rem; }
+
+  </style>
+</head>
+<body class="min-h-screen antialiased">
+
+  <div class="min-h-screen flex">
+    <!-- SIDEBAR -->
+    <aside class="w-72 p-6 hidden md:flex flex-col gap-6 glass">
+      <div class="flex items-center gap-3">
+        <img src="{% static 'images/favicon.ico' %}" class="w-12 h-12 rounded-lg" alt="logo">
+        <div>
+          <div class="font-bold text-lg">Grievance Admin</div>
+          <div class="text-xs text-muted">Control center</div>
+        </div>
+      </div>
+
+      <nav class="flex-1">
+        <ul class="space-y-1">
+          <li>
+            <a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition bg-white/6 hover:bg-white/10">
+              <i data-lucide="home" class="w-4 h-4"></i> Dashboard
+            </a>
+          </li>
+
+          <li>
+            <a href="{% url 'adminpanel:grievances_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6">
+              <i data-lucide="file-text" class="w-4 h-4"></i> Grievances
+            </a>
+          </li>
+
+          <li>
+            <a href="{% url 'adminpanel:analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6">
+              <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics
+            </a>
+          </li>
+
+          <li>
+            <a href="{% url 'adminpanel:users' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6">
+              <i data-lucide="users" class="w-4 h-4"></i> Users
+            </a>
+          </li>
+
+          <li>
+            <a href="{% url 'adminpanel:categories' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6">
+              <i data-lucide="tag" class="w-4 h-4"></i> Categories
+            </a>
+          </li>
+
+          <!-- list link -->
+          <li>
+            <a href="{% url 'adminpanel:grievances_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6">
+              <i data-lucide="settings" class="w-4 h-4"></i> Settings
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="text-xs text-muted">
+        <div>Logged in as</div>
+        <div class="font-medium">{{ request.user.username }}</div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="flex-1 min-h-screen flex flex-col">
+      <!-- TOPBAR -->
+      <header class="flex items-center justify-between px-6 py-4 glass">
+        <div class="flex items-center gap-4">
+          <!-- hamburger for mobile -->
+          <button id="mobileToggle" class="md:hidden p-2 rounded bg-white/6 ui-transition"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+          <div class="text-xl font-semibold">Dashboard</div>
+
+          <div class="ml-6 hidden md:flex items-center gap-3">
+            <label class="text-sm text-muted">Search</label>
+            <!-- patched input: uses .search-input so placeholder/text are visible on dark bg -->
+            <input id="searchTop" placeholder="Search grievances or users..." class="px-3 py-2 rounded search-input text-sm w-80" />
+            <button id="searchBtn" class="btn-primary ui-transition text-sm">Search</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a href="{% url 'accounts:logout' %}" class="px-3 py-2 rounded bg-white/6 hover:bg-white/10">Sign out</a>
+        </div>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="p-6 space-y-6">
+        <!-- Metric cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 rounded-xl glass flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted">Total grievances</div>
+              <div id="card-total" class="text-2xl font-bold">—</div>
+              <div class="text-xs text-muted">All time</div>
+            </div>
+            <div class="bg-white/4 p-3 rounded-md">
+              <i data-lucide="list" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl glass flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted">Open</div>
+              <div id="card-open" class="text-2xl font-bold">—</div>
+              <div class="text-xs text-muted">New / In progress</div>
+            </div>
+            <div class="bg-white/4 p-3 rounded-md">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl glass flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted">Resolved</div>
+              <div id="card-resolved" class="text-2xl font-bold">—</div>
+              <div class="text-xs text-muted">Completed</div>
+            </div>
+            <div class="bg-white/4 p-3 rounded-md">
+              <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl glass flex items-center justify-between">
+            <div>
+              <div class="text-xs text-muted">Avg resolution (days)</div>
+              <div id="card-sla" class="text-2xl font-bold">—</div>
+              <div class="text-xs text-muted">SLA metric</div>
+            </div>
+            <div class="bg-white/4 p-3 rounded-md">
+              <i data-lucide="trending-up" class="w-6 h-6"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main area: table + analytics -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left: Grievance table (2/3) -->
+          <section class="lg:col-span-2 p-4 rounded-xl glass">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <!-- changed select classes to use select-readable so text shows up properly -->
+                <select id="filter-status" class="px-3 py-2 rounded bg-white/6 select-readable text-sm">
+                  <option value="">All status</option>
+                  <option value="new">New</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+
+                <select id="filter-category" class="px-3 py-2 rounded bg-white/6 select-readable text-sm">
+                  <option value="">All categories</option>
+                </select>
+
+                <select id="page-size" class="px-3 py-2 rounded bg-white/6 select-readable text-sm">
+                  <option value="10">10</option>
+                  <option value="25" selected>25</option>
+                  <option value="50">50</option>
+                </select>
+
+                <button id="applyFilters" class="btn-primary ui-transition text-sm">Apply</button>
+                <button id="exportCsv" class="px-3 py-2 rounded bg-white/6 hover:bg-white/10 text-sm text-muted">Export CSV</button>
+              </div>
+
+              <div class="text-sm text-muted">Showing <span id="page-info">Page 1</span></div>
+            </div>
+
+            <!-- table -->
+            <div class="overflow-auto">
+              <table class="min-w-full text-left">
+                <thead class="text-xs text-muted">
+                  <tr>
+                    <th class="px-3 py-2">ID</th>
+                    <th class="px-3 py-2">Title</th>
+                    <th class="px-3 py-2">User</th>
+                    <th class="px-3 py-2">Category</th>
+                    <th class="px-3 py-2">Status</th>
+                    <th class="px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="grievanceTable" class="text-sm">
+                  <tr><td colspan="6" class="px-3 py-6 text-center text-muted">Loading grievances…</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- pagination controls -->
+            <div class="mt-3 flex items-center justify-between">
+              <div class="text-sm text-muted">Total: <span id="total-count">—</span></div>
+              <div class="flex items-center gap-2">
+                <button id="prevPage" class="px-3 py-1 rounded bg-white/6">Prev</button>
+                <button id="nextPage" class="px-3 py-1 rounded bg-white/6">Next</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Right: analytics + officers (1/3) -->
+          <aside class="p-4 rounded-xl glass">
+            <h3 class="text-sm text-high mb-2">Analytics</h3>
+
+            <div class="space-y-4">
+              <div>
+                <canvas id="statusChart" height="160"></canvas>
+              </div>
+
+              <div>
+                <div class="text-sm text-muted">Top categories</div>
+                <ul id="topCategories" class="mt-2 space-y-1 text-sm"></ul>
+              </div>
+
+              <div>
+                <div class="text-sm text-muted">Officers</div>
+                <select id="officerList" class="w-full mt-2 px-3 py-2 rounded bg-white/6 select-readable text-sm"></select>
+                <button id="assignButton" class="mt-2 w-full btn-accent ui-transition">Assign selected officer</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ASSIGN MODAL -->
+  <div id="assignModal" class="fixed inset-0 flex items-center justify-center bg-black/50 hidden z-50">
+    <div class="w-full max-w-md p-6 rounded-xl glass">
+      <div class="flex items-center justify-between mb-3">
+        <div class="font-semibold">Assign grievance</div>
+        <button id="assignClose" class="px-2 py-1 rounded bg-white/6">✕</button>
+      </div>
+      <div id="assignInfo" class="text-sm text-muted mb-3">Grievance #—</div>
+      <select id="assignSelect" class="w-full px-3 py-2 rounded bg-white/6 select-readable text-sm"></select>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="assignCancel" class="px-3 py-2 rounded bg-white/6">Cancel</button>
+        <button id="assignConfirm" class="btn-accent ui-transition">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ===========================
+   Client JS (hook to your APIs)
+   - Update API_BASE to your endpoints
+   =========================== */
+
+const API_BASE = '/adminpanel/api/'; // unchanged - matches your urls
+let currentPage = 1;
+let pageSize = parseInt(document.getElementById('page-size').value || 25);
+let currentAssignTarget = null;
+let officers = [];
+
+/* small fetch wrapper using session (same-origin) */
+async function fetchJSON(url, opts={}) {
+  opts.credentials = 'same-origin';
+  opts.headers = Object.assign({'Accept':'application/json'}, opts.headers || {});
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const text = await res.text().catch(()=>res.statusText);
+    console.error('API error', res.status, text);
+    throw new Error('API error ' + res.status);
+  }
+  return res.json();
+}
+
+/* LOAD ANALYTICS & OFFICERS */
+async function loadAnalytics() {
+  try {
+    const data = await fetchJSON(API_BASE + 'analytics/');
+    document.getElementById('card-total').textContent = data.total_grievances ?? 0;
+    document.getElementById('card-open').textContent = (data.by_status && (data.by_status.new||0) + (data.by_status.in_progress||0)) || 0;
+    document.getElementById('card-resolved').textContent = (data.by_status && data.by_status.resolved) || 0;
+    document.getElementById('card-sla').textContent = data.avg_resolution_days ?? '—';
+
+    // status chart
+    const labels = Object.keys(data.by_status || {});
+    const values = labels.map(l => data.by_status[l] || 0);
+    renderStatusChart(labels, values);
+
+    // top categories
+    const topUl = document.getElementById('topCategories'); topUl.innerHTML = '';
+    (data.by_category || []).slice(0,6).forEach(c => {
+      const li = document.createElement('li'); li.textContent = `${c.name} — ${c.count}`; topUl.appendChild(li);
+    });
+
+    // populate filter categories
+    const catSelect = document.getElementById('filter-category'); Array.from(catSelect.querySelectorAll('option[data-dyn]')).forEach(n=>n.remove());
+    (data.by_category || []).forEach(c => {
+      const opt = document.createElement('option'); opt.value = c.id || c.name; opt.textContent = c.name; opt.setAttribute('data-dyn','1'); catSelect.appendChild(opt);
+    });
+
+  } catch(err) {
+    console.error('loadAnalytics', err);
+  }
+}
+
+async function loadOfficers() {
+  try {
+    const data = await fetchJSON(API_BASE + 'user-status/');
+    officers = data.officers || [];
+    const sel = document.getElementById('officerList'); sel.innerHTML = '<option value="">Select officer</option>';
+    const assignSel = document.getElementById('assignSelect'); assignSel.innerHTML = '<option value="">Select officer</option>';
+    officers.forEach(o => {
+      const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.username;
+      sel.appendChild(opt); assignSel.appendChild(opt.cloneNode(true));
+    });
+  } catch(err) { console.error('loadOfficers', err); }
+}
+
+/* LOAD GRIEVANCES (paginated) */
+function qstring(params) {
+  return Object.entries(params).filter(([k,v]) => v !== undefined && v !== null && String(v) !== '').map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') ? '?' + Object.entries(params).filter(([k,v]) => v !== undefined && v !== null && String(v) !== '').map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+}
+
+async function loadGrievances(page=1) {
+  currentPage = page;
+  pageSize = parseInt(document.getElementById('page-size').value || 25);
+  const params = { page, page_size: pageSize, status: document.getElementById('filter-status').value, category: document.getElementById('filter-category').value, search: document.getElementById('searchTop').value, ordering: '-created_at' };
+  const qs = qstring(params);
+  try {
+    const data = await fetchJSON(API_BASE + 'grievances/' + qs);
+    renderTable(data);
+  } catch(err) {
+    document.getElementById('grievanceTable').innerHTML = `<tr><td colspan="6" class="px-3 py-6 text-center text-muted">Failed to load. Check console.</td></tr>`;
+    console.error(err);
+  }
+}
+
+function renderTable(data) {
+  const rows = Array.isArray(data) ? data : (data.results || []);
+  const tbody = document.getElementById('grievanceTable'); tbody.innerHTML = '';
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="px-3 py-6 text-center text-muted">No grievances found.</td></tr>`;
+    document.getElementById('total-count').textContent = data.count ?? rows.length;
+    return;
+  }
+  rows.forEach(g => {
+    const tr = document.createElement('tr');
+    tr.className = 'border-t border-white/6';
+    tr.innerHTML = `
+      <td class="px-3 py-3">${g.id}</td>
+      <td class="px-3 py-3"><a href="/adminpanel/grievances/${g.id}/" class="hover:underline">${escapeHtml(g.title)}</a></td>
+      <td class="px-3 py-3">${g.user?.username || g.user || '-'}</td>
+      <td class="px-3 py-3">${(g.category && (g.category.name||g.category)) || '-'}</td>
+      <td class="px-3 py-3"><span class="px-2 py-1 rounded text-xs ${badgeClass(g.status)}">${g.status||''}</span></td>
+      <td class="px-3 py-3">
+        <select data-id="${g.id}" class="status-select px-2 py-1 rounded bg-white/6 select-readable text-sm">
+          <option value="">Change status</option>
+          <option value="new">New</option>
+          <option value="in_progress">In Progress</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
+        <button data-assign="${g.id}" class="ml-2 px-2 py-1 rounded btn-accent text-sm">Assign</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // attach listeners
+  Array.from(document.querySelectorAll('.status-select')).forEach(sel => sel.addEventListener('change', async (e) => {
+    const id = e.target.getAttribute('data-id'); const status = e.target.value;
+    if (!status) return;
+    await updateStatus(id, status);
+  }));
+  Array.from(document.querySelectorAll('button[data-assign]')).forEach(btn => btn.addEventListener('click', (e) => {
+    openAssignModal(e.target.getAttribute('data-assign'));
+  }));
+
+  document.getElementById('total-count').textContent = data.count ?? rows.length;
+  document.getElementById('page-info').textContent = `Page ${currentPage} • ${data.count ?? rows.length} total`;
+}
+
+/* helpers */
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function badgeClass(status){
+  if (status === 'new') return 'bg-yellow-300/25 text-yellow-100';
+  if (status === 'in_progress') return 'bg-blue-300/25 text-blue-100';
+  if (status === 'resolved') return 'bg-green-300/25 text-green-100';
+  return 'bg-white/6 text-white';
+}
+
+/* status chart */
+let statusChart = null;
+function renderStatusChart(labels, values){
+  const ctx = document.getElementById('statusChart');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, { type: 'doughnut', data: { labels, datasets:[{ data: values }] }, options:{ responsive:true, plugins:{legend:{position:'bottom'}} } });
+}
+
+/* ACTIONS: update status, assign */
+async function updateStatus(id, status){
+  try {
+    await fetchJSON(API_BASE + `grievances/${id}/`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({status}) });
+    await loadAnalytics(); await loadGrievances(currentPage);
+  } catch(e){ alert('Failed to update status'); console.error(e); }
+}
+
+function openAssignModal(id){
+  currentAssignTarget = id;
+  document.getElementById('assignInfo').textContent = `Grievance #${id}`;
+  document.getElementById('assignModal').classList.remove('hidden');
+}
+
+/* confirm assign */
+document.getElementById('assignConfirm').addEventListener('click', async ()=> {
+  const uid = document.getElementById('assignSelect').value;
+  if (!uid) return alert('Select officer');
+  try {
+    await fetchJSON(API_BASE + `grievances/${currentAssignTarget}/assign/`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({assigned_to: parseInt(uid)}) });
+    document.getElementById('assignModal').classList.add('hidden');
+    await loadGrievances(currentPage);
+  } catch(e){ alert('Assign failed'); console.error(e); }
+});
+document.getElementById('assignCancel').addEventListener('click', ()=> document.getElementById('assignModal').classList.add('hidden'));
+document.getElementById('assignClose').addEventListener('click', ()=> document.getElementById('assignModal').classList.add('hidden'));
+
+/* pagination, filters, export */
+document.getElementById('applyFilters').addEventListener('click', ()=> loadGrievances(1));
+document.getElementById('nextPage').addEventListener('click', ()=> loadGrievances(currentPage + 1));
+document.getElementById('prevPage').addEventListener('click', ()=> { if (currentPage > 1) loadGrievances(currentPage - 1); });
+document.getElementById('exportCsv').addEventListener('click', async ()=> {
+  const params = { page: currentPage, page_size: pageSize, status: document.getElementById('filter-status').value, category: document.getElementById('filter-category').value };
+  const qs = qstring(params); const data = await fetchJSON(API_BASE + 'grievances/' + qs);
+  const rows = (Array.isArray(data) ? data : data.results || []).map(i => ({id:i.id, title:i.title, user:i.user?.username||i.user||'', category:i.category?.name||'', status:i.status, created_at:i.created_at}));
+  if (!rows.length) return alert('No data to export');
+  const keys = Object.keys(rows[0]); const csv = [keys.join(',')].concat(rows.map(r=>keys.map(k=>`"${String(r[k]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'grievances.csv'; a.click(); URL.revokeObjectURL(url);
+});
+// -------------------------
+// Search wiring + debounce
+// -------------------------
+function debounce(fn, wait = 400) {
+  let t = null;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+// wrapper that disables the search button while loading
+async function doSearch() {
+  const btn = document.getElementById('searchBtn');
+  try {
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
+    await loadGrievances(1);
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-70'); }
+  }
+}
+
+// immediate search on button click
+const searchBtn = document.getElementById('searchBtn');
+if (searchBtn) searchBtn.addEventListener('click', (e) => { e.preventDefault(); doSearch(); });
+
+// Enter key triggers immediate search
+const searchTop = document.getElementById('searchTop');
+if (searchTop) {
+  searchTop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doSearch();
+    }
+  });
+
+  // Live search while typing (debounced)
+  searchTop.addEventListener('input', debounce(() => {
+    // If you prefer NOT to auto-search while typing, comment out the next line.
+    doSearch();
+  }, 500));
+}
+
+/* INIT */
+async function init(){
+  try {
+    await loadAnalytics();
+    await loadOfficers();
+    await loadGrievances(1);
+  } catch(e){ console.error('init', e); }
+}
+init();
+
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html> 

@@ -1,0 +1,38 @@
+/* login.css & register.css */
+
+@layer utilities {
+  /* Gradient animation */
+  @keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradientBG {
+    background-size: 200% 200%;
+    animation: gradientBG 15s ease infinite;
+  }
+}
+
+/* Input focus shadow animation */
+input:focus {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Button hover shadow */
+button:hover {
+  transform: translateY(-2px);
+  transition: all 0.3s ease-in-out;
+}
+
+/* Smooth transition for icons */
+.relative svg {
+  transition: transform 0.3s ease-in-out, color 0.3s ease-in-out;
+}
+
+.relative input:focus + svg {
+  color: #7c3aed; /* Purple shade on focus */
+  transform: scale(1.1);
+}
+
+
