@@ -9,6 +9,7 @@ class User(AbstractUser):
         ('admin', 'Admin'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='citizen')
+    email_verified = models.BooleanField(default=False)  # New field
 
     def is_citizen(self):
         return self.role == 'citizen'
@@ -18,4 +19,3 @@ class User(AbstractUser):
 
     def is_adminpanel(self):
         return self.role == 'admin'
-

@@ -24,11 +24,15 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    department = DepartmentSerializer(read_only=True)
-    department_id = serializers.PrimaryKeyRelatedField(
-        queryset=Department.objects.all(), source="department", write_only=True, required=False, allow_null=True
-    )
+    # readonly fields provided by view annotation
+    grievance_count = serializers.IntegerField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'department', 'grievance_count', 'created_at', 'updated_at']
+        # if department is an object you may want to nest or serialize differently
     class Meta:
         model = Category
         fields = ("id", "name", "department", "department_id")

@@ -1,23 +1,45 @@
 # accounts/views.py
-from django.shortcuts import render, redirect
+# accounts/views.py (top imports)
+import threading
+import logging
+
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from .forms import RegisterForm
-from django.contrib.auth.views import LoginView, LogoutView
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_protect
 from django.urls import reverse_lazy
 from django.conf import settings
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import UserPassesTestMixin
 from django.http import HttpResponseForbidden
+from django.contrib.auth.views import LoginView, LogoutView
 
 # DRF imports
-from rest_framework import generics, viewsets, permissions, status
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
 from rest_framework.response import Response
-from .serializers import RegisterSerializer, UserSerializer
+
+# local imports
+from .forms import RegisterForm    # your registration form
+from .serializers import RegisterSerializer, UserSerializer, AdminCreateUserSerializer
+from .permissions import IsAdminPanel
+from accounts.utils.email_smtp import send_via_smtplib  # <-- use accounts utils
+# remove any `from adminpanel.utils.email_smtp` duplicate imports
+
+
+# DRF imports - using plain APIView (no generics/viewsets)
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
+from rest_framework.response import Response
+
+from .serializers import RegisterSerializer, UserSerializer, AdminCreateUserSerializer  # AdminCreateUserSerializer: add this if not present
 from .permissions import IsAdminPanel
 
 User = get_user_model()
+
 
 # ---------- Role mixin (reusable) ----------
 class RoleRequiredMixin(UserPassesTestMixin):
@@ -89,66 +111,177 @@ class CustomLogoutView(LogoutView):
 
 # ---------- Registration (no role input) ----------
 @csrf_protect
+
+@csrf_protect
 def register_view(request):
     """
-    HTML registration view. Registration form does NOT accept or expose role.
-    New users are assigned role='citizen' server-side.
+    Registration view — creates user and sends welcome email via smtplib (background thread).
+    Uses RegisterForm defined in accounts/forms.py
     """
     if request.method == "POST":
         form = RegisterForm(request.POST)
         if form.is_valid():
-            # create user but do not let user choose role
             user = form.save(commit=False)
-            # force the role to 'citizen' — registration does not accept other roles
-            if hasattr(user, "role"):
-                user.role = "citizen"
+            # Adjust field name if your form uses password1/password2
+            pwd = form.cleaned_data.get("password") or form.cleaned_data.get("password1")
+            if pwd:
+                user.set_password(pwd)
             user.is_active = True
             user.save()
-            messages.success(request, "Account created. Please log in.")
+
+            # Prepare email content
+            subject = "Welcome to Kerala Grievance Portal"
+            plain = (
+                f"Hello {user.get_full_name() or user.username},\n\n"
+                "Welcome to the Kerala Grievance Portal. Your account has been created successfully.\n\n"
+                "You can login at: /accounts/login/\n\n"
+                "Regards,\nGrievance Portal Team"
+            )
+
+            # Render HTML template safely (optional)
+            try:
+                html = render_to_string("emails/welcome.html", {"user": user, "site_name": "Kerala Grievance Portal"}, request=request)
+            except Exception:
+                html = None
+
+            # Send in background thread (non-blocking)
+            def _send():
+                result = send_via_smtplib(
+                    to_email=user.email,
+                    subject=subject,
+                    plain_text=plain,
+                    html=html,
+                )
+                if not result.get("ok"):
+                    logging.getLogger(__name__).warning("Registration email failed: %s", result)
+
+            try:
+                t = threading.Thread(target=_send, daemon=True)
+                t.start()
+            except Exception:
+                # fallback: synchronous send
+                send_via_smtplib(to_email=user.email, subject=subject, plain_text=plain, html=html)
+
+            messages.success(request, "Registration successful. A welcome email will be sent shortly.")
             return redirect("accounts:login")
-        else:
-            # Debug print and user-friendly message handling
-            print("Register form errors:", form.errors)
-            username_errors = form.errors.get('username')
-            if username_errors and any('already exists' in str(e).lower() for e in username_errors):
-                messages.error(request, "That username is already taken. Please choose a different username.")
-            else:
-                messages.error(request, "Please correct the errors below and try again.")
     else:
         form = RegisterForm()
+
     return render(request, "accounts/register.html", {"form": form})
 
+# -------------------------
+# Plain REST API endpoints
+# -------------------------
 
-# ---------- DRF API views (unchanged) ----------
-class RegisterAPIView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = [permissions.AllowAny]
+class RegisterAPI(APIView):
+    """
+    POST: register new user (public)
+    Uses RegisterSerializer which requires password + password2
+    """
+    permission_classes = [AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        if isinstance(response.data, dict) and 'password' in response.data:
-            response.data.pop('password', None)
-        return response
-
-
-class MeAPIView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
+    def post(self, request, format=None):
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            # serializer.create handles role assignment
+            user = serializer.save()
+            out = UserSerializer(user).data
+            return Response(out, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class AdminUserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
-    permission_classes = [IsAdminPanel]
+class MeAPI(APIView):
+    """
+    GET: retrieve current user
+    PATCH: update current user (partial)
+    """
+    permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        headers = self.get_success_headers(serializer.data)
-        data = serializer.data.copy()
-        data.pop('password', None)
-        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+    def get(self, request, format=None):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, format=None):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserListCreateAPI(APIView):
+    """
+    Admin-only:
+    GET: list users
+    POST: create user (admin supplies password)
+    """
+    permission_classes = [IsAuthenticated, IsAdminPanel]
+
+    def get(self, request, format=None):
+        users = User.objects.all().order_by('-date_joined')
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        # Expecting AdminCreateUserSerializer to be present in serializers.py
+        # If not present, you can use a similar serializer that handles `password` with set_password.
+        try:
+            serializer = AdminCreateUserSerializer(data=request.data)
+        except NameError:
+            # fallback: try to reuse RegisterSerializer but it requires password2.
+            # Ask admin to provide password2 as same as password if using RegisterSerializer.
+            serializer = RegisterSerializer(data=request.data)
+
+        if serializer.is_valid():
+            user = serializer.save()
+            out = UserSerializer(user).data
+            return Response(out, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminUserDetailAPI(APIView):
+    """
+    Admin-only:
+    GET / PATCH / DELETE for a single user identified by pk
+    """
+    permission_classes = [IsAuthenticated, IsAdminPanel]
+
+    def get_object(self, pk):
+        return get_object_or_404(User, pk=pk)
+
+    def get(self, request, pk, format=None):
+        user = self.get_object(pk)
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk, format=None):
+        user = self.get_object(pk)
+        # prefer AdminCreateUserSerializer for password handling
+        try:
+            serializer = AdminCreateUserSerializer(user, data=request.data, partial=True)
+        except NameError:
+            serializer = UserSerializer(user, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            # If serializer doesn't handle password properly, ensure to call set_password manually
+            updated = serializer.save()
+            # If raw password provided in request and serializer didn't handle it:
+            raw_pwd = request.data.get('password')
+            if raw_pwd and not hasattr(updated, 'password') or not updated.check_password(raw_pwd):
+                updated.set_password(raw_pwd)
+                updated.save()
+            return Response(UserSerializer(updated).data, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk, format=None):
+        user = self.get_object(pk)
+        # protection: prevent deleting superuser or deleting self
+        if user.is_superuser:
+            return Response({"detail": "Cannot delete superuser."}, status=status.HTTP_403_FORBIDDEN)
+        if user == request.user:
+            return Response({"detail": "You cannot delete your own account."}, status=status.HTTP_403_FORBIDDEN)
+
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+

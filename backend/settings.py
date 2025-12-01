@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,6 +60,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
@@ -142,12 +144,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 from datetime import timedelta
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",  # optional, handy for local testing
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
 }
 
 SIMPLE_JWT = {
@@ -162,3 +165,28 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 AUTH_USER_MODEL = 'accounts.User'
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# settings.py (example)
+EMAIL_SMTP_HOST = "smtp.gmail.com"   # your SMTP server
+EMAIL_SMTP_PORT = 587                # 465 for SSL, 587 for TLS
+EMAIL_SMTP_USER = "thazneemsalim3@gmail.com"
+EMAIL_SMTP_PASSWORD = "pjbomygeorwtywdc"  # NOT your real Gmail password
+EMAIL_SMTP_USE_TLS = True
+EMAIL_SMTP_USE_SSL = False
+
+# Use SMTP backend for sending real emails
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = EMAIL_SMTP_HOST
+EMAIL_PORT = EMAIL_SMTP_PORT
+EMAIL_USE_TLS = EMAIL_SMTP_USE_TLS
+EMAIL_USE_SSL = EMAIL_SMTP_USE_SSL
+EMAIL_HOST_USER = EMAIL_SMTP_USER
+EMAIL_HOST_PASSWORD = EMAIL_SMTP_PASSWORD
+DEFAULT_FROM_EMAIL = EMAIL_SMTP_USER
+
+
+

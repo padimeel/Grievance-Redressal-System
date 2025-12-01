@@ -1,5 +1,589 @@
-{% block content %}
-<h1 class="text-2xl">Grievances</h1>
-<p>The list is populated by the admin JS (calls your API). If you prefer server-side rendering, replace this with context data.</p>
-<div id="grievance-list-placeholder"></div>
-{% endblock %}
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Users</title>
+
+  <!-- Tailwind CDN (dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <style>
+    :root{
+      --bg-start:#071124; --bg-end:#072f2e;
+      --brand:#0ea5a4; --brand-dark:#0b8f8b;
+      --accent:#4f46e5;
+      --text-high:#e6eef3; --text-muted:#a8bbc6;
+    }
+    html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
+    body{background:linear-gradient(180deg,var(--bg-start),var(--bg-end)); color:var(--text-high); overflow:hidden;}
+    .app{display:flex; height:100vh; width:100vw;}
+    .glass{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.05); box-shadow: 0 8px 28px rgba(2,6,23,0.45); backdrop-filter: blur(6px); border-radius:.75rem; }
+
+    /* Sidebar */
+    aside.sidebar { width:280px; padding:28px; box-sizing:border-box; }
+    .brand { display:flex; gap:.75rem; align-items:center; margin-bottom:18px; }
+    .brand img{width:44px;height:44px;border-radius:.5rem;}
+    nav a { display:flex; gap:.6rem; align-items:center; padding:.5rem .6rem; border-radius:.5rem; color:var(--text-high); text-decoration:none; margin-bottom:.25rem; }
+    nav a:hover { background: rgba(255,255,255,0.03); }
+
+    main.content { flex:1; padding:20px 28px; box-sizing:border-box; display:flex; flex-direction:column; gap:18px; min-height:0; }
+
+    /* Topbar */
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; gap:12px; }
+    .search-input{ background: rgba(255,255,255,0.03); color:var(--text-high); border:1px solid rgba(255,255,255,0.04); padding:.45rem .6rem; border-radius:.375rem; min-width:260px; }
+    .btn-primary{ background:linear-gradient(90deg,var(--brand),var(--brand-dark)); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+    .btn-accent{ background:linear-gradient(90deg,var(--accent),#7c3aed); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+
+    /* Page layout */
+    .panel { padding:14px; border-radius:12px; }
+    .muted { color:var(--text-muted); font-size:.95rem; }
+    .table-panel { display:flex; flex-direction:column; gap:8px; min-height:0; }
+
+    /* Filters area */
+    .filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+    /* table with internal scroll */
+    .table-wrapper { overflow:auto; border-radius:8px; background:transparent; max-height:56vh; } /* internal scroll area */
+    table { width:100%; border-collapse:collapse; }
+    thead th{ color:var(--text-muted); font-size:.85rem; padding:.75rem; text-align:left; border-bottom:1px solid rgba(255,255,255,0.04); position:sticky; top:0; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); z-index:1; }
+    td { padding:.65rem; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; }
+
+    /* modal */
+    .modal { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:2000; }
+    .modal .sheet { width:640px; max-width:95%; padding:18px; border-radius:10px; }
+
+    /* ----- Custom select styles (visible dropdown) ----- */
+    .custom-select { display:inline-block; position:relative; min-width:140px; font-size:0.95rem; }
+    .cs-btn {
+      display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+      padding:.4rem .65rem; border-radius:.35rem;
+      background:linear-gradient(180deg,#07191b,#052225); color:var(--text-high);
+      border:1px solid rgba(255,255,255,0.06); cursor:pointer; min-width:140px;
+    }
+    .cs-btn .label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; display:inline-block; }
+    /* FORCE OPAQUE DROPDOWN: prevents glass from making options invisible */
+    .cs-list {
+      position:absolute; left:0; right:0; margin-top:.3rem; max-height:260px; overflow:auto;
+      background: linear-gradient(180deg, #061417 0%, #07191b 100%) !important;
+      color: var(--text-high) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      background-clip: padding-box !important;
+      border: 1px solid rgba(255,255,255,0.06) !important;
+      box-shadow: 0 12px 40px rgba(2,6,23,0.7) !important;
+      border-radius: .5rem !important;
+      z-index: 9999 !important;
+      display:none;
+    }
+    .cs-item { padding:.55rem .75rem; cursor:pointer; color:var(--text-high); font-size:0.95rem; background:transparent; }
+    .cs-item:hover { background: rgba(255,255,255,0.03) !important; color:var(--text-high) !important; }
+    .cs-item[aria-selected="true"] { background: linear-gradient(90deg, rgba(14,165,164,0.12), rgba(79,70,229,0.08)) !important; color:var(--text-high) !important; }
+    .cs-btn, .cs-btn .label, .cs-arrow { color: var(--text-high) !important; }
+
+    /* Portal wrapper (for JS portal) */
+    .cs-list-portal { position:absolute; z-index:9999; pointer-events:auto; }
+
+    @media(max-width:1024px){
+      aside.sidebar{display:none;}
+      .search-input{min-width:120px;}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass" role="navigation" aria-label="Sidebar">
+    <div class="brand">
+      <img src="{% static 'images/favicon.ico' %}" alt="logo">
+      <div>
+        <div style="font-weight:700;">Grievance Admin</div>
+        <div class="muted" style="font-size:.8rem;">Control center</div>
+      </div>
+    </div>
+
+    <nav>
+      <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a>
+      <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a>
+      <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a>
+      <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i> Users</a>
+      <a href="{% url 'adminpanel:categories' %}"><i data-lucide="tag" class="w-4 h-4"></i> Categories</a>
+    </nav>
+
+    <div style="margin-top:20px;font-size:.85rem;" class="muted">
+      <div>Logged in as</div>
+      <div style="font-weight:600;">{{ request.user.username }}</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+    <!-- TOPBAR -->
+    <header class="topbar glass" role="banner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:1.15rem;font-weight:600;">Users</div>
+        <div class="filters" style="margin-left:12px;">
+          <input id="search" placeholder="Search username, name or email..." class="search-input" aria-label="Search users" />
+
+          <!-- custom selects (visible) that sync with hidden native selects -->
+          <div class="custom-select" data-target="filterRole" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="cs-btn"><span class="label">All roles</span><span class="cs-arrow">▾</span></div>
+            <div class="cs-list" role="listbox">
+              <div class="cs-item" data-value="">All roles</div>
+              <div class="cs-item" data-value="admin">Admin</div>
+              <div class="cs-item" data-value="officer">Officer</div>
+              <div class="cs-item" data-value="citizen">Citizen</div>
+            </div>
+          </div>
+
+          <div class="custom-select" data-target="filterStatus" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="cs-btn"><span class="label">Any status</span><span class="cs-arrow">▾</span></div>
+            <div class="cs-list" role="listbox">
+              <div class="cs-item" data-value="">Any status</div>
+              <div class="cs-item" data-value="active">Active</div>
+              <div class="cs-item" data-value="inactive">Inactive</div>
+            </div>
+          </div>
+
+          <button id="searchBtn" class="btn-primary">Search</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="addUserBtn" class="btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i> Add user</button>
+        <button id="exportBtn" class="btn-accent"><i data-lucide="download" class="w-4 h-4"></i> Export CSV</button>
+        <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="btn-primary">Sign out</button></form>
+      </div>
+    </header>
+
+    <!-- CONTENT PANEL -->
+    <section class="panel glass table-panel" aria-labelledby="users-heading" style="min-height:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="muted">Total users: <span id="totalUsers">—</span></div>
+        <div class="muted">Selected: <span id="selectedCount">0</span></div>
+      </div>
+
+      <div class="table-wrapper" role="region" aria-live="polite">
+        <table role="table" aria-label="User list">
+          <thead>
+            <tr>
+              <th style="width:40px"><input id="selectAll" type="checkbox" aria-label="Select all" /></th>
+              <th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userBody">
+            <tr><td colspan="9" style="padding:28px;text-align:center;color:var(--text-muted);">Loading users…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+        <div class="muted">Page <span id="pageInfo">1</span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="prevPage" class="btn-accent">Prev</button>
+          <button id="nextPage" class="btn-accent">Next</button>
+
+          <div class="custom-select" data-target="pageSize" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="cs-btn"><span class="label">25</span><span class="cs-arrow">▾</span></div>
+            <div class="cs-list" role="listbox">
+              <div class="cs-item" data-value="10">10</div>
+              <div class="cs-item" data-value="25">25</div>
+              <div class="cs-item" data-value="50">50</div>
+            </div>
+          </div>
+
+          <div class="custom-select" data-target="bulkAction" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="cs-btn"><span class="label">Bulk actions</span><span class="cs-arrow">▾</span></div>
+            <div class="cs-list" role="listbox">
+              <div class="cs-item" data-value="">Bulk actions</div>
+              <div class="cs-item" data-value="activate">Activate</div>
+              <div class="cs-item" data-value="deactivate">Deactivate</div>
+              <div class="cs-item" data-value="set_role_officer">Set role: Officer</div>
+              <div class="cs-item" data-value="set_role_admin">Set role: Admin</div>
+            </div>
+          </div>
+
+          <button id="applyBulk" class="btn-primary">Apply</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL -->
+    <div id="userModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="sheet glass">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div id="userModalTitle" style="font-weight:600;">Edit user</div>
+          <button id="userModalClose" class="btn-accent">✕</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <input id="u_username" placeholder="Username" class="search-input" aria-label="Username" />
+          <div style="display:flex;gap:8px;">
+            <input id="u_first" placeholder="First name" class="search-input" aria-label="First name" />
+            <input id="u_last" placeholder="Last name" class="search-input" aria-label="Last name" />
+          </div>
+          <input id="u_email" placeholder="Email" class="search-input" aria-label="Email" />
+
+          <div class="custom-select" data-target="u_role" tabindex="0" aria-haspopup="listbox" aria-expanded="false">
+            <div class="cs-btn"><span class="label">officer</span><span class="cs-arrow">▾</span></div>
+            <div class="cs-list" role="listbox">
+              <div class="cs-item" data-value="admin">admin</div>
+              <div class="cs-item" data-value="officer">officer</div>
+              <div class="cs-item" data-value="citizen">citizen</div>
+            </div>
+          </div>
+
+          <label style="display:flex;align-items:center;gap:8px;"><input id="u_active" type="checkbox" /> <span class="muted">Active</span></label>
+
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button id="u_cancel" class="btn-accent">Cancel</button>
+            <button id="u_save" class="btn-primary">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden native selects for form/API compatibility -->
+    <select id="filterRole" name="filterRole" hidden>
+      <option value="">All roles</option><option value="admin">admin</option><option value="officer">officer</option><option value="citizen">citizen</option>
+    </select>
+
+    <select id="filterStatus" name="filterStatus" hidden>
+      <option value="">Any status</option><option value="active">active</option><option value="inactive">inactive</option>
+    </select>
+
+    <select id="pageSize" name="pageSize" hidden>
+      <option value="10">10</option><option value="25" selected>25</option><option value="50">50</option>
+    </select>
+
+    <select id="bulkAction" name="bulkAction" hidden>
+      <option value="">Bulk actions</option>
+      <option value="activate">Activate</option>
+      <option value="deactivate">Deactivate</option>
+      <option value="set_role_officer">Set role: Officer</option>
+      <option value="set_role_admin">Set role: Admin</option>
+    </select>
+
+    <select id="u_role" name="u_role" hidden>
+      <option value="admin">admin</option><option value="officer" selected>officer</option><option value="citizen">citizen</option>
+    </select>
+
+    <!-- debug screenshot shown faintly -->
+    <img src="/mnt/data/Screenshot 2025-11-20 145052.png" alt="debug" style="position:fixed;right:12px;bottom:12px;width:220px;opacity:.04;pointer-events:none;">
+  </main>
+</div>
+
+<!-- Custom-select JS: transforms visible .custom-select and syncs with the hidden native select (id in data-target).
+     Also portals cs-list into body to avoid parent overflow/backdrop clipping. -->
+<script>
+(function(){
+  function setupCustomSelect(wrapper){
+    if (!wrapper || wrapper.dataset.csInit === '1') return;
+    wrapper.dataset.csInit = '1';
+    const targetId = wrapper.dataset.target;
+    const native = document.getElementById(targetId);
+    const btn = wrapper.querySelector('.cs-btn');
+    const labelEl = wrapper.querySelector('.label');
+    const list = wrapper.querySelector('.cs-list');
+    const items = Array.from(list ? list.querySelectorAll('.cs-item') : []);
+
+    // initial label from native if present
+    if (native) {
+      const opt = native.options[native.selectedIndex];
+      if (opt) labelEl.textContent = opt.text;
+    } else if (items[0]) {
+      labelEl.textContent = items[0].textContent;
+    }
+
+    // create portal container to avoid clipping/styling bleed
+    const portal = document.createElement('div');
+    portal.className = 'cs-list-portal';
+    portal.style.position = 'absolute';
+    portal.style.zIndex = 9999;
+    portal.style.display = 'none';
+    portal.appendChild(list);
+    document.body.appendChild(portal);
+    list.style.display = 'none';
+
+    function openPortal(){
+      const rect = btn.getBoundingClientRect();
+      portal.style.left = rect.left + 'px';
+      portal.style.top = (rect.bottom + 6) + 'px';
+      portal.style.width = rect.width + 'px';
+      portal.style.display = 'block';
+      list.style.display = 'block';
+      wrapper.setAttribute('aria-expanded','true');
+      const sel = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
+      if (sel) sel.scrollIntoView({block:'nearest'});
+    }
+    function closePortal(){
+      list.style.display = 'none';
+      portal.style.display = 'none';
+      wrapper.setAttribute('aria-expanded','false');
+    }
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (portal.style.display === 'block') closePortal(); else openPortal();
+    });
+
+    // keyboard support
+    wrapper.addEventListener('keydown', (e) => {
+      const KEY = { ENTER:13, SPACE:32, ESC:27, ARROW_DOWN:40, ARROW_UP:38 };
+      const visible = portal.style.display === 'block';
+      if (e.keyCode === KEY.ENTER || e.keyCode === KEY.SPACE) {
+        e.preventDefault();
+        if (!visible) openPortal(); else {
+          const focus = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
+          if (focus) focus.click();
+        }
+      } else if (e.keyCode === KEY.ESC) {
+        closePortal();
+      } else if (e.keyCode === KEY.ARROW_DOWN || e.keyCode === KEY.ARROW_UP) {
+        e.preventDefault();
+        const activeItems = Array.from(list.querySelectorAll('.cs-item:not(.cs-disabled)'));
+        if (!activeItems.length) return;
+        let idx = activeItems.findIndex(i => i.getAttribute('aria-selected') === 'true');
+        if (idx === -1) idx = 0;
+        else idx = (e.keyCode === KEY.ARROW_DOWN) ? Math.min(activeItems.length-1, idx+1) : Math.max(0, idx-1);
+        activeItems.forEach(i => i.removeAttribute('aria-selected'));
+        activeItems[idx].setAttribute('aria-selected','true');
+        activeItems[idx].scrollIntoView({block:'nearest'});
+      }
+    });
+
+    items.forEach(item => {
+      item.addEventListener('click', (ev) => {
+        const v = item.dataset.value;
+        const text = item.textContent;
+        labelEl.textContent = text;
+        items.forEach(i=>i.removeAttribute('aria-selected'));
+        item.setAttribute('aria-selected','true');
+        if (native) {
+          native.value = v;
+          native.dispatchEvent(new Event('change', { bubbles:true }));
+        }
+        closePortal();
+      });
+    });
+
+    // close on outside click
+    document.addEventListener('click', (e) => { if (!wrapper.contains(e.target) && !portal.contains(e.target)) closePortal(); });
+    window.addEventListener('resize', closePortal);
+    window.addEventListener('scroll', closePortal, true);
+
+    // sync native -> custom
+    if (native) {
+      native.addEventListener('change', () => {
+        const opt = native.options[native.selectedIndex];
+        if (opt) {
+          labelEl.textContent = opt.text;
+          items.forEach(i => i.removeAttribute('aria-selected'));
+          const hit = items.find(i => String(i.dataset.value) === String(native.value));
+          if (hit) hit.setAttribute('aria-selected','true');
+        }
+      });
+    }
+
+    console.log('[CSD] converted', targetId);
+  }
+
+  function convertAll(){
+    document.querySelectorAll('.custom-select').forEach(setupCustomSelect);
+  }
+  document.addEventListener('DOMContentLoaded', convertAll);
+  window.addEventListener('load', convertAll);
+
+  // observe for dynamically added custom-selects
+  const mo = new MutationObserver((mutations)=>{
+    let found=false;
+    for(const m of mutations){
+      m.addedNodes && m.addedNodes.forEach(n=>{
+        if (n.nodeType===1 && (n.matches('.custom-select') || n.querySelector && n.querySelector('.custom-select'))) found=true;
+      });
+    }
+    if(found) setTimeout(convertAll,60);
+  });
+  mo.observe(document.documentElement||document.body,{childList:true,subtree:true});
+  window.__convertCustomSelects = convertAll;
+})();
+</script>
+
+<!-- Application JS: users API, modal, pagination, bulk actions, export -->
+<script>
+function getCookie(name){ const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)'); return v? v.pop() : ''; }
+const API = '/adminpanel/api/';
+let users = [], page = 1, page_size = 25, total = 0;
+let selected = new Set();
+let editingUserId = null;
+
+function apiFetch(url, opts={}) {
+  opts.credentials = 'same-origin';
+  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
+  const method = (opts.method||'GET').toUpperCase();
+  if (['POST','PUT','PATCH','DELETE'].includes(method)) opts.headers['X-CSRFToken'] = getCookie('csrftoken');
+  return fetch(url, opts).then(async res => {
+    if (!res.ok) {
+      const txt = await res.text().catch(()=>null);
+      const err = new Error('HTTP ' + res.status + (txt?(' - '+txt):''));
+      err.status = res.status;
+      throw err;
+    }
+    return res.json().catch(()=>null);
+  });
+}
+
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent = v; }
+
+async function loadUsers() {
+  page_size = parseInt(document.getElementById('pageSize').value || 25);
+  const role = document.getElementById('filterRole').value;
+  const status = document.getElementById('filterStatus').value;
+  const search = document.getElementById('search').value;
+  const q = new URLSearchParams({ page, page_size });
+  if (role) q.set('role', role);
+  if (status) q.set('status', status);
+  if (search) q.set('search', search);
+
+  try {
+    const payload = await apiFetch(API + 'users/?' + q.toString());
+    total = payload.count || 0;
+    users = payload.results || [];
+    renderUsers();
+    setText('totalUsers', total);
+    setText('pageInfo', page);
+  } catch (err) {
+    console.error('loadUsers', err);
+    document.getElementById('userBody').innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--text-muted);">Failed to load users. Check console.</td></tr>';
+  }
+}
+
+function renderUsers(){
+  const tbody = document.getElementById('userBody'); tbody.innerHTML = '';
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--text-muted);">No users found.</td></tr>'; return; }
+  users.forEach(u=>{
+    const tr=document.createElement('tr');
+    const checked = selected.has(String(u.id)) ? 'checked' : '';
+    tr.innerHTML = `
+      <td><input class="rowCheckbox" data-id="${u.id}" type="checkbox" ${checked} /></td>
+      <td>${u.id}</td>
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml((u.first_name||'') + ' ' + (u.last_name||''))}</td>
+      <td>${escapeHtml(u.email||'')}</td>
+      <td>${escapeHtml(u.role||'')}</td>
+      <td>${u.is_active ? 'Active' : 'Inactive'}</td>
+      <td>${u.last_login ? new Date(u.last_login).toLocaleString() : '-'}</td>
+      <td>
+        <button data-edit="${u.id}" class="btn-accent">Edit</button>
+        <button data-reset="${u.id}" class="btn-primary">Reset PW</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  Array.from(document.querySelectorAll('.rowCheckbox')).forEach(cb=>cb.addEventListener('change',(e)=>{ const id=e.target.getAttribute('data-id'); if(e.target.checked) selected.add(String(id)); else selected.delete(String(id)); setText('selectedCount', selected.size); }));
+  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click', onEdit));
+  Array.from(document.querySelectorAll('button[data-reset]')).forEach(b=>b.addEventListener('click', onResetPw));
+}
+
+document.getElementById('searchBtn').addEventListener('click', ()=> { page=1; loadUsers(); });
+document.getElementById('prevPage').addEventListener('click', ()=> { if(page>1){ page--; loadUsers(); }});
+document.getElementById('nextPage').addEventListener('click', ()=> { if(page*page_size < total){ page++; loadUsers(); }});
+document.getElementById('selectAll').addEventListener('change', (e)=> { if (e.target.checked) { users.forEach(u => selected.add(String(u.id))); } else { users.forEach(u => selected.delete(String(u.id))); } setText('selectedCount', selected.size); renderUsers(); });
+
+document.getElementById('applyBulk').addEventListener('click', async ()=> {
+  const action = document.getElementById('bulkAction').value;
+  if (!action) return alert('Select a bulk action');
+  if (!selected.size) return alert('No users selected');
+  const ids = Array.from(selected).map(x=>parseInt(x));
+  let payload = { action:'', ids };
+  if (action === 'activate') payload.action = 'activate';
+  else if (action === 'deactivate') payload.action = 'deactivate';
+  else if (action.startsWith('set_role_')) { payload.action = 'set_role'; payload.role = action.replace('set_role_',''); }
+  try {
+    await apiFetch(API + 'users/bulk/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    alert('Bulk action applied'); selected.clear(); setText('selectedCount', 0); loadUsers();
+  } catch (err) { console.error('bulk', err); alert('Bulk failed'); }
+});
+
+document.getElementById('addUserBtn').addEventListener('click', ()=> {
+  editingUserId = null;
+  document.getElementById('userModalTitle').textContent = 'Add user (manual)';
+  document.getElementById('u_username').value = '';
+  document.getElementById('u_first').value = '';
+  document.getElementById('u_last').value = '';
+  document.getElementById('u_email').value = '';
+  document.getElementById('u_role').value = 'officer';
+  // update visible custom label
+  const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
+  if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = 'officer';
+  document.getElementById('u_active').checked = true;
+  showModal('userModal');
+});
+document.getElementById('u_cancel').addEventListener('click', ()=> hideModal('userModal'));
+document.getElementById('userModalClose').addEventListener('click', ()=> hideModal('userModal'));
+
+document.getElementById('u_save').addEventListener('click', async ()=>{
+  const payload = { first_name: document.getElementById('u_first').value, last_name: document.getElementById('u_last').value, email: document.getElementById('u_email').value, role: document.getElementById('u_role').value, is_active: document.getElementById('u_active').checked };
+  try {
+    if (editingUserId) {
+      await apiFetch(API + `users/${editingUserId}/`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      alert('User updated');
+    } else {
+      const username = document.getElementById('u_username').value || (payload.email ? payload.email.split('@')[0] : 'user' + Date.now());
+      const password = Math.random().toString(36).slice(-8);
+      await apiFetch(API + 'users/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign(payload,{username,password})) });
+      alert('User created');
+    }
+    hideModal('userModal'); loadUsers();
+  } catch (err) { console.error('save user', err); alert('Save failed'); }
+});
+
+function onEdit(e){
+  const id = e.currentTarget.getAttribute('data-edit'); editingUserId = id; const u = users.find(x=>String(x.id)===String(id)); if(!u) return alert('User not found');
+  document.getElementById('userModalTitle').textContent = 'Edit user';
+  document.getElementById('u_username').value = u.username || '';
+  document.getElementById('u_first').value = u.first_name || '';
+  document.getElementById('u_last').value = u.last_name || '';
+  document.getElementById('u_email').value = u.email || '';
+  document.getElementById('u_role').value = u.role || '';
+  const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
+  if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = u.role || 'officer';
+  document.getElementById('u_active').checked = !!u.is_active;
+  showModal('userModal');
+}
+
+async function onResetPw(e){
+  const id = e.currentTarget.getAttribute('data-reset'); if(!confirm('Send password reset email to this user?')) return;
+  try { const res = await apiFetch(API + `users/${id}/reset_password/`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ send_email: true }) }); alert(res.detail || 'Reset requested'); } catch (err) { console.error('reset', err); alert('Reset failed'); }
+}
+
+function showModal(id){ const el=document.getElementById(id); el.style.display='flex'; el.setAttribute('aria-hidden','false'); const first = el.querySelector('input,select,button'); if(first) first.focus(); }
+function hideModal(id){ const el=document.getElementById(id); el.style.display='none'; el.setAttribute('aria-hidden','true'); }
+
+document.getElementById('exportBtn').addEventListener('click', async ()=> {
+  try {
+    const res = await apiFetch(API + `users/?page=1&page_size=1000`);
+    const all = res.results || [];
+    if (!all.length) return alert('No users to export');
+    const cols = ['id','username','email','first_name','last_name','role','is_active','last_login'];
+    const csv = [cols.join(',')].concat(all.map(u => cols.map(c => `"${String(u[c]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`users_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  } catch (err) { console.error('export', err); alert('Export failed'); }
+});
+
+// initialize
+(async function(){ await loadUsers(); })();
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
+
+
+
