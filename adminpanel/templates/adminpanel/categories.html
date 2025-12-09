@@ -4,406 +4,317 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin — Categories</title>
-
-  <!-- Tailwind CDN (dev) -->
+  <title>Admin — Officers (Refined UI)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="icon" href="{% static 'images/favicon.ico' %}">
   <style>
     :root{
-      --bg-start: #071124;
-      --bg-end:   #072f2e;
-      --brand:    #0ea5a4;
-      --brand-dark:#0b8f8b;
-      --accent:   #4f46e5;
-      --text-high:#e6eef3;
-      --text-muted:#a8bbc6;
+      --bg-1: #071126; /* deep blue */
+      --bg-2: #042333; /* teal indigo */
+      --card: rgba(255,255,255,0.03);
+      --muted: #9fb6c2;
+      --accent: linear-gradient(90deg,#06b6d4,#0ea5a4);
+      --glass-border: rgba(255,255,255,0.06);
+      --success: #10b981;
+      --modal-bg: #021823; /* solid modal background */
+      --input-bg: #062029; /* solid input background */
     }
-    html,body { height:100%; margin:0; }
-    body {
-      background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
-      color: var(--text-high);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      -webkit-font-smoothing:antialiased;
-    }
-    .glass {
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border: 1px solid rgba(255,255,255,0.05);
-      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
-      backdrop-filter: blur(6px);
-      border-radius: .75rem;
-    }
-    .text-muted { color: var(--text-muted); }
-    .text-high { color: var(--text-high); }
-    .btn-primary {
-      background: linear-gradient(90deg, var(--brand), var(--brand-dark));
-      color: white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center;
-    }
-    .btn-danger {
-      background: linear-gradient(90deg,#ef4444,#dc2626); color:#fff; padding:.45rem .7rem; border-radius:.5rem;
-    }
-
-    /* select fix */
-    .select-readable, select {
-      color: var(--text-high) !important;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)) !important;
-      border: 1px solid rgba(255,255,255,0.06) !important;
-      padding: .45rem .95rem .45rem .6rem !important;
-      border-radius: .375rem !important;
-      -webkit-appearance: none !important; appearance:none !important;
-      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23e6eef3'><path d='M5.25 7.5L10 12.25 14.75 7.5z'/></svg>") !important;
-      background-repeat:no-repeat !important; background-position: right .75rem center !important; background-size: .9rem !important;
-    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:radial-gradient(800px 500px at 10% 10%, rgba(14,165,164,0.05), transparent), linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#e6eef3;-webkit-font-smoothing:antialiased}
 
     /* layout */
-    .page { display:flex; min-height:100vh; }
-    .sidebar { width:18rem; padding:1.25rem; }
-    .content { flex:1; display:flex; flex-direction:column; }
-    header.topbar { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.25rem; border-bottom:1px solid rgba(255,255,255,0.03); }
-    main.container { padding:1.25rem; overflow:auto; }
+    .app{display:flex;gap:20px;min-height:100vh;padding:28px}
+    .sidebar{width:260px}
+    .main{flex:1;display:flex;flex-direction:column;gap:20px}
+
+    /* sidebar */
+    .sidebar .card{padding:20px;border-radius:14px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.009));box-shadow:0 12px 38px rgba(2,6,23,0.6)}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img{width:48px;height:48px;border-radius:10px}
+    .nav{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+    .nav a{padding:10px 12px;border-radius:10px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:10px}
+    .nav a.active{background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));color:#dff7f6}
+
+    /* header */
+    header.top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .searchbar{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;min-width:360px}
+    .searchbar input{background:transparent;border:0;outline:none;color:inherit;width:100%}
+
+    /* stats */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .stat-card{padding:16px;border-radius:12px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008));display:flex;justify-content:space-between;align-items:center}
+    .stat-left{display:flex;flex-direction:column}
+    .stat-value{font-size:1.25rem;font-weight:700}
+    .stat-label{color:var(--muted);font-size:0.9rem}
 
     /* table */
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:.75rem; text-align:left; }
-    thead th { font-size:.85rem; color:var(--text-muted); border-bottom:1px solid rgba(255,255,255,0.04); }
-    tbody tr:hover { background: rgba(255,255,255,0.015); }
+    .table-card{padding:12px;border-radius:12px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.006));box-shadow:0 8px 24px rgba(2,6,23,0.45)}
+    table{width:100%;border-collapse:collapse}
+    thead th{color:var(--muted);text-align:left;padding:12px 10px;font-size:0.9rem}
+    tbody tr{transition:transform .12s ease, background .12s ease}
+    tbody tr:hover{transform:translateY(-2px)}
+    .row{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02);border-radius:10px;margin-bottom:10px}
+    td{padding:12px 10px;vertical-align:middle}
+    .avatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#0ea5a4,#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:#022426}
+    .dept-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted);font-size:0.85rem}
+    /* actions */
+    /* general button used across UI */
+    .btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.04);color:var(--text, #e6eef3);cursor:pointer;transition:all .12s ease}
+    .btn:hover{transform:translateY(-2px);background:linear-gradient(90deg,#0ea5a4,#06b6d4);color:#012a28}
+    .btn.primary{background:var(--accent);color:#042028;border:none}
 
-    /* small helpers */
-    .muted { color:var(--text-muted); font-size:.9rem; }
-    .pill { background: rgba(255,255,255,0.03); padding:.25rem .5rem; border-radius:.375rem; color:var(--text-high); font-size:.85rem; }
-    .search-input { background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.04); padding:.45rem .6rem; border-radius:.375rem; color:var(--text-high); }
-    .small-muted { color: rgba(255,255,255,0.6); font-size:.85rem; }
-    @media(max-width:1024px){ .sidebar { display:none; } }
+    /* action buttons inside table rows */
+    .actions button{margin-left:8px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.03);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .actions button:hover{background:linear-gradient(90deg,#0ea5a4,#06b6d4);color:#042028}
+    .actions button.primary{background:var(--accent);color:#042028}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:60}
+    .modal.show{display:flex}
+    .modal .card{width:100%;max-width:760px;background:var(--modal-bg);border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 20px 50px rgba(2,6,23,0.7);padding:20px}
+
+    /* inputs (solid, not transparent) */
+    input[type="text"], input[type="email"], textarea{background:var(--input-bg);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:10px;color:inherit;width:100%;outline:none}
+
+    /* footer / pagination */
+    .pager{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+    .pager .controls{display:flex;gap:8px}
+
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(1,1fr)}.searchbar{min-width:220px}}
+    @media(max-width:760px){.app{flex-direction:column;padding:16px}.sidebar{width:100%}.main{gap:12px}}
   </style>
 </head>
-<body class="antialiased">
-
-<div class="page">
-  <!-- SIDEBAR -->
-  <aside class="sidebar glass hidden lg:flex flex-col gap-6">
-    <div class="flex items-center gap-3">
-      <img src="{% static 'images/favicon.ico' %}" class="w-10 h-10 rounded" alt="logo">
-      <div>
-        <div class="font-bold text-lg">Grievance Admin</div>
-        <div class="text-xs text-muted">Control center</div>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="card">
+      <div class="brand">
+        <img src="{% static 'images/favicon.ico' %}" alt="logo" />
+        <div>
+          <div style="font-weight:800;font-size:1.05rem">Grievance Admin</div>
+          <div style="color:var(--muted);font-size:.85rem">Kerala • Control Center</div>
+        </div>
       </div>
-    </div>
+      <nav class="nav" style="margin-top:16px">
+        <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a>
+        <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a>
+        <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a>
+        <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i> Users</a>
+        <a href="{% url 'adminpanel:categories' %}" class="active"><i data-lucide="user-check" class="w-4 h-4"></i> Officers</a>
+      </nav>
 
-    <nav class="flex-1">
-      <ul class="space-y-1">
-        <li><a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition bg-white/6 hover:bg-white/10"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a></li>
-        <li><a href="{% url 'adminpanel:grievances_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a></li>
-        <li><a href="{% url 'adminpanel:analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a></li>
-        <li><a href="{% url 'adminpanel:users' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="users" class="w-4 h-4"></i> Users</a></li>
-        <li><a href="{% url 'adminpanel:categories' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="tag" class="w-4 h-4"></i> Categories</a></li>
-      </ul>
-    </nav>
-
-    <div class="text-xs text-muted">
-      <div>Logged in as</div>
-      <div class="font-medium">{{ request.user.username }}</div>
+      <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.02);padding-top:14px;color:var(--muted);font-size:.95rem">
+        <div>Signed in as</div>
+        <div style="font-weight:700;margin-top:4px">{{ request.user.username }}</div>
+      </div>
     </div>
   </aside>
 
-  <!-- CONTENT -->
-  <div class="content">
-    <header class="topbar glass">
-      <div class="flex items-center gap-4">
-        <div class="text-xl font-semibold">Categories</div>
-        <div class="text-sm text-muted hidden md:block">Manage grievance categories</div>
+  <main class="main">
+    <header class="top">
+      <div>
+        <div style="font-size:1.2rem;font-weight:800">Officers</div>
+        <div style="color:var(--muted);margin-top:4px">Manage officers, departments and usage — improved visual style</div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <input id="searchBox" placeholder="Search categories..." class="search-input text-sm" />
-        <button id="addBtn" class="btn-primary ui-transition text-sm"><i data-lucide="plus-circle" class="w-4 h-4"></i> Add</button>
-        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="px-3 py-2 rounded bg-white/6 hover:bg-white/10 text-sm">Sign out</button>
-        </form>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="searchbar">
+          <i data-lucide="search" class="w-4 h-4" style="color:var(--muted)"></i>
+          <input id="searchBox" placeholder="Search name, department..." />
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button id="filterBtn" class="btn" title="Filters"><i data-lucide="funnel" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+        <button id="addBtn" class="btn primary" style="padding:10px 14px;border-radius:12px;background:var(--accent);color:#042028;font-weight:700;display:flex;align-items:center;gap:8px"><i data-lucide="user-plus" class="w-4 h-4"></i> Add Officer</button>
+
+        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" /><button class="btn" style="background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:10px">Sign out</button></form>
       </div>
     </header>
 
-    <main class="container">
-      <div class="mb-4 flex items-center justify-between gap-4">
-        <div class="muted">Total categories: <span id="totalCategories" class="pill">—</span></div>
-      </div>
-
-      <div class="glass p-4">
-        <div class="overflow-x-auto">
-          <table aria-live="polite">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Department</th>
-                <th>Usage</th>
-                <th class="text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="categoryBody">
-              <tr><td colspan="5" class="py-8 text-center text-muted">Loading categories…</td></tr>
-            </tbody>
-          </table>
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Total officers</div>
+          <div id="totalCategories" class="stat-value">—</div>
         </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="users" class="w-5 h-5"></i></div>
+      </div>
 
-        <!-- pagination controls (client-side) -->
-        <div class="mt-3 flex items-center justify-between">
-          <div class="text-sm text-muted">Showing <span id="showingInfo">—</span></div>
-          <div class="flex items-center gap-2">
-            <button id="prevPage" class="px-3 py-1 rounded bg-white/6">Prev</button>
-            <button id="nextPage" class="px-3 py-1 rounded bg-white/6">Next</button>
-          </div>
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Active departments</div>
+          <div id="deptCount" class="stat-value">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Avg. usage</div>
+          <div id="avgUsage" class="stat-value">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="activity" class="w-5 h-5"></i></div>
+      </div>
+    </section>
+
+    <div class="table-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="color:var(--muted)">Showing <strong id="showingInfo">—</strong></div>
+        <div class="controls" style="display:flex;gap:8px;align-items:center">
+          <button id="prevPage" class="btn">Prev</button>
+          <button id="nextPage" class="btn">Next</button>
         </div>
       </div>
-    </main>
-  </div>
-</div>
 
-<!-- MODALS -->
-<!-- Add / Edit Modal -->
-<div id="catModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50">
-  <div class="w-full max-w-lg p-6 glass">
-    <div class="flex items-center justify-between mb-3">
-      <div id="catModalTitle" class="font-semibold">Add Category</div>
-      <button id="catClose" class="px-2 py-1 rounded bg-white/6">✕</button>
-    </div>
-
-    <div class="space-y-3">
-      <div>
-        <label class="block text-sm text-muted mb-1">Name</label>
-        <input id="catName" class="w-full select-readable" placeholder="Category name" />
+      <div style="overflow:auto">
+        <table aria-live="polite">
+          <thead>
+            <tr>
+              <th style="width:60px">ID</th>
+              <th>Name</th>
+              <th style="width:230px">Department</th>
+              <th style="width:120px">Usage</th>
+              <th style="width:150px;text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="categoryBody">
+            <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Loading officers…</td></tr>
+          </tbody>
+        </table>
       </div>
 
-      <div>
-        <label class="block text-sm text-muted mb-1">Department (optional)</label>
-        <input id="catDept" class="w-full select-readable" placeholder="Department name (optional)" />
-      </div>
-
-      <div class="flex justify-end gap-2">
-        <button id="catCancel" class="px-3 py-2 rounded bg-white/6">Cancel</button>
-        <button id="catSave" class="btn-primary">Save</button>
+      <div class="pager">
+        <div style="color:var(--muted);font-size:.9rem">Tip: Use the action buttons to edit or delete</div>
+        <div class="controls">
+          <button id="prevPageBottom" class="btn">◀</button>
+          <button id="nextPageBottom" class="btn">▶</button>
+        </div>
       </div>
     </div>
-  </div>
+
+  </main>
 </div>
 
-<!-- Delete confirm -->
-<div id="delModal" class="fixed inset-0 hidden items-center justify-center bg-black/50 z-50">
-  <div class="w-full max-w-md p-6 glass">
-    <div class="flex items-center justify-between mb-3">
-      <div class="font-semibold">Delete Category</div>
-      <button id="delClose" class="px-2 py-1 rounded bg-white/6">✕</button>
+<!-- MODAL: Add / Edit Officer -->
+<div id="catModal" class="modal"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="font-weight:800" id="catModalTitle">Add Officer</div>
+    <button id="catClose" class="btn">✕</button>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div style="flex:1 1 320px">
+      <label class="muted small">Name</label>
+      <input id="catName" type="text" />
+      <div id="catNameErr" style="color:#ff9aa2;display:none;margin-top:6px;font-size:.9rem"></div>
     </div>
-    <div class="text-sm text-muted mb-4">Are you sure you want to delete <strong id="delName">this category</strong>? This action cannot be undone. If the backend prevents deletion (category has grievances), you'll see an error message.</div>
-    <div class="flex justify-end gap-2">
-      <button id="delCancel" class="px-3 py-2 rounded bg-white/6">Cancel</button>
-      <button id="delConfirm" class="btn-danger">Delete</button>
+    <div style="flex:1 1 220px">
+      <label class="muted small">Department</label>
+      <input id="catDept" type="text" />
+      <div id="catDeptErr" style="color:#ff9aa2;display:none;margin-top:6px;font-size:.9rem"></div>
     </div>
   </div>
-</div>
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
+    <button id="catCancel" class="btn">Cancel</button>
+    <button id="catSave" class="btn primary">Save</button>
+  </div>
+</div></div>
+
+<!-- MODAL: Delete -->
+<div id="delModal" class="modal"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Delete Officer</strong><button id="delClose" class="btn">✕</button></div>
+  <div style="color:var(--muted);margin-bottom:12px">Are you sure you want to delete <strong id="delName">this officer</strong>?</div>
+  <div style="display:flex;justify-content:flex-end;gap:10px">
+    <button id="delCancel" class="btn">Cancel</button>
+    <button id="delConfirm" class="btn" style="background:#dc2626;color:#fff;border-radius:10px;padding:8px 12px">Delete</button>
+  </div>
+</div></div>
 
 <script>
-/* Categories page JS
-   - Uses your API endpoints:
-     GET  /adminpanel/api/categories/
-     POST /adminpanel/api/categories/
-     PATCH/DELETE /adminpanel/api/categories/{id}/
-   - All requests use credentials: 'same-origin' to include session cookie.
-*/
-
 const API_BASE = '/adminpanel/api/categories/';
-let categories = []; // full dataset
-let filtered = [];
-let currentPage = 1;
-const pageSize = 15;
-let editingId = null;
+let categories = []; let filtered = []; let currentPage = 1; const pageSize = 12; let editingId = null; let deletingId = null;
 
-// util
-function qs(obj){ const p = new URLSearchParams(obj); return p.toString() ? '?' + p.toString() : ''; }
-function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
-function apiFetch(url, opts={}) {
-  opts.credentials = 'same-origin';
-  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers || {});
-  return fetch(url, opts).then(async res => {
-    if (!res.ok) {
-      const text = await res.text().catch(()=>null);
-      const err = new Error('HTTP ' + res.status + (text ? ' - ' + text : ''));
-      err.status = res.status;
-      err.body = text;
-      throw err;
-    }
-    return res.json().catch(()=>null);
-  });
-}
+function getCookie(name){const v=document.cookie.match('(^|;)\s*'+name+'\s*=\s*([^;]+)');return v?v.pop():''}
+async function apiFetch(url, opts={}){opts.credentials='same-origin';opts.headers=Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRFToken':getCookie('csrftoken')}, opts.headers||{});const res = await fetch(url, opts); if(!res.ok){ const body = await res.clone().json().catch(()=>null); const err = new Error('HTTP '+res.status); err.status=res.status; err.body=body; throw err } return res.status===204?null:await res.json().catch(()=>null)}
 
-// load categories
-async function loadCategories(){
-  try {
-    const data = await apiFetch(API_BASE, { method:'GET' });
-    // data may be list or object; support both
-    categories = Array.isArray(data) ? data : (data || []);
-    filtered = categories.slice();
-    currentPage = 1;
-    renderTable();
-    document.getElementById('totalCategories').textContent = categories.length;
-  } catch (err) {
-    console.error('loadCategories failed', err);
-    if (err.status === 401) showPageMessage('Unauthorized — please login.');
-    else showPageMessage('Failed to load categories.');
-    document.getElementById('categoryBody').innerHTML = '<tr><td colspan="5" class="py-6 text-center text-muted">Failed to load categories. Check console.</td></tr>';
-  }
-}
+function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function renderValue(v){ if(v===null||v===undefined||v==='') return '-'; if(typeof v==='object'){ if(v.name) return escapeHtml(v.name); if(v.title) return escapeHtml(v.title); try{ const s=JSON.stringify(v); return escapeHtml(s.length>80? s.slice(0,77)+'...':s)}catch(e){return '-'} } return escapeHtml(v) }
 
-function showPageMessage(msg){
-  // small unobtrusive alert (console + temporary UI)
-  console.warn(msg);
-  // You can implement a toast here; for now console + brief text in table
-  const el = document.getElementById('categoryBody');
-  if (el) {
-    // add small note row at top
-    const note = document.createElement('tr');
-    note.innerHTML = `<td colspan="5" class="py-2 text-sm text-muted">${escapeHtml(msg)}</td>`;
-    el.prepend(note);
-  }
-}
-
-function renderTable(){
-  const tbody = document.getElementById('categoryBody');
-  tbody.innerHTML = '';
-  if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-muted">No categories found.</td></tr>';
-    document.getElementById('showingInfo').textContent = '0';
-    return;
-  }
-
-  const start = (currentPage-1)*pageSize;
-  const end = start + pageSize;
-  const pageItems = filtered.slice(start, end);
-  pageItems.forEach(c => {
-    const tr = document.createElement('tr');
+function renderTable(){ const tbody = document.getElementById('categoryBody'); tbody.innerHTML = '';
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">No officers found.</td></tr>'; document.getElementById('showingInfo').textContent='0'; return }
+  const start = (currentPage-1)*pageSize; const end = start + pageSize; filtered.slice(start,end).forEach(c=>{
+    const tr = document.createElement('tr'); tr.className = 'row';
     tr.innerHTML = `
-      <td class="align-top py-3">${c.id ?? '-'}</td>
-      <td class="align-top py-3 font-medium">${escapeHtml(c.name || c.title || '')}</td>
-      <td class="align-top py-3">${escapeHtml(c.department?.name || c.department || '-')}</td>
-      <td class="align-top py-3">${(c.count !== undefined) ? c.count : '-'}</td>
-      <td class="align-top py-3 text-right">
-        <button data-edit="${c.id}" class="px-2 py-1 rounded bg-white/6 mr-2">Edit</button>
-        <button data-del="${c.id}" class="px-2 py-1 rounded bg-white/6">Delete</button>
-      </td>`;
+      <td style="width:60px">${renderValue(c.id)}</td>
+      <td>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="avatar">${(c.name && typeof c.name==='string')?c.name.charAt(0).toUpperCase():'-'}</div>
+          <div>
+            <div style="font-weight:700">${renderValue(c.name)}</div>
+            <div style="color:var(--muted);font-size:13px">ID: ${renderValue(c.id)}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="dept-badge">${renderValue(c.department)}</span></td>
+      <td>${renderValue(c.count)}</td>
+      <td style="text-align:right" class="actions">
+        <button data-edit="${escapeHtml(c.id)}" title="Edit"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+        <button data-del="${escapeHtml(c.id)}" title="Delete"><i data-lucide="trash" class="w-4 h-4" style="color:#ff9aa2"></i></button>
+      </td>
+    `;
+    // removed row click — actions are done via buttons only
     tbody.appendChild(tr);
   });
-
-  const showingText = `${Math.min(start+1, filtered.length)}-${Math.min(end, filtered.length)} of ${filtered.length}`;
-  document.getElementById('showingInfo').textContent = showingText;
-
-  // wire events
-  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b => b.addEventListener('click', onEditClick));
-  Array.from(document.querySelectorAll('button[data-del]')).forEach(b => b.addEventListener('click', onDelClick));
+  document.getElementById('showingInfo').textContent = `${Math.min(start+1,filtered.length)}-${Math.min(end,filtered.length)} of ${filtered.length}`;
+  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click',onEditClick));
+  Array.from(document.querySelectorAll('button[data-del]')).forEach(b=>b.addEventListener('click',onDelClick));
 }
 
-// search/filter
-document.getElementById('searchBox').addEventListener('input', (e) => {
-  const q = (e.target.value || '').trim().toLowerCase();
-  if (!q) { filtered = categories.slice(); currentPage = 1; renderTable(); return; }
-  filtered = categories.filter(c => (String(c.name||'') + ' ' + String(c.department?.name||c.department||'')).toLowerCase().includes(q));
-  currentPage = 1;
-  renderTable();
-});
-
-// pagination
-document.getElementById('prevPage').addEventListener('click', () => {
-  if (currentPage > 1) { currentPage--; renderTable(); }
-});
-document.getElementById('nextPage').addEventListener('click', () => {
-  const maxPage = Math.ceil(filtered.length / pageSize) || 1;
-  if (currentPage < maxPage) { currentPage++; renderTable(); }
-});
-
-// Add
-document.getElementById('addBtn').addEventListener('click', () => {
-  editingId = null;
-  document.getElementById('catModalTitle').textContent = 'Add Category';
-  document.getElementById('catName').value = '';
-  document.getElementById('catDept').value = '';
-  document.getElementById('catModal').classList.remove('hidden'); document.getElementById('catModal').classList.add('flex');
-});
-
-// modal controls
-['catClose','catCancel'].forEach(id => document.getElementById(id).addEventListener('click', ()=> { document.getElementById('catModal').classList.add('hidden'); document.getElementById('catModal').classList.remove('flex'); }));
-
-document.getElementById('catSave').addEventListener('click', async () => {
-  const name = (document.getElementById('catName').value || '').trim();
-  const dept = (document.getElementById('catDept').value || '').trim();
-  if (!name) return alert('Name is required.');
-  try {
-    if (editingId) {
-      // PATCH
-      await apiFetch(API_BASE + editingId + '/', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, department: dept || null }) });
-      // update local list: reload
-      await loadCategories();
-    } else {
-      // POST
-      await apiFetch(API_BASE, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, department: dept || null }) });
-      await loadCategories();
-    }
-    document.getElementById('catModal').classList.add('hidden'); document.getElementById('catModal').classList.remove('flex');
-  } catch (err) {
-    console.error('save category failed', err);
-    if (err.status === 400) alert('Invalid input or category exists.');
-    else if (err.status === 401) alert('Unauthorized. Login again.');
-    else alert('Failed to save category.');
-  }
-});
-
-// edit button handler
-async function onEditClick(e){
-  const id = e.currentTarget.getAttribute('data-edit');
-  if (!id) return;
-  editingId = id;
-  // find item
-  const item = categories.find(x => String(x.id) === String(id));
-  document.getElementById('catModalTitle').textContent = 'Edit Category';
-  document.getElementById('catName').value = item?.name || '';
-  document.getElementById('catDept').value = (item && (item.department?.name || item.department)) || '';
-  document.getElementById('catModal').classList.remove('hidden'); document.getElementById('catModal').classList.add('flex');
+async function loadCategories(){ try{
+    const data = await apiFetch(API_BASE);
+    console.log('API response:', data);
+    categories = Array.isArray(data)?data:[]; filtered = categories.slice(); currentPage = 1; renderTable();
+    document.getElementById('totalCategories').textContent = String(categories.length || 0);
+    document.getElementById('deptCount').textContent = String(new Set(categories.map(c=> typeof c.department==='object'?c.department.name:(c.department||'')).filter(Boolean)).size || '—');
+    const avg = categories.reduce((s,c)=>s+(c.count||0),0)/(categories.length||1); document.getElementById('avgUsage').textContent = categories.length?Math.round(avg*10)/10:'—';
+  } catch(e){ console.error(e); document.getElementById('categoryBody').innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Failed to load officers.</td></tr>'; document.getElementById('totalCategories').textContent='—' }
 }
 
-// delete
-let deletingId = null;
-function onDelClick(e){
-  deletingId = e.currentTarget.getAttribute('data-del');
-  const name = categories.find(c => String(c.id) === String(deletingId))?.name || '';
-  document.getElementById('delName').textContent = name;
-  document.getElementById('delModal').classList.remove('hidden'); document.getElementById('delModal').classList.add('flex');
-}
-['delClose','delCancel'].forEach(id => document.getElementById(id).addEventListener('click', ()=> { document.getElementById('delModal').classList.add('hidden'); document.getElementById('delModal').classList.remove('flex'); deletingId = null; }));
+// Modals
+function showModal(id){document.getElementById(id).classList.add('show')}
+function hideModal(id){document.getElementById(id).classList.remove('show')}
+function openEdit(item){ document.getElementById('catModalTitle').textContent = 'Edit Officer'; document.getElementById('catName').value = (item && item.name && typeof item.name === 'object') ? (item.name.name || '') : (item && item.name ? item.name : ''); document.getElementById('catDept').value = (item && item.department && typeof item.department === 'object') ? (item.department.name || '') : (item && item.department ? item.department : ''); showModal('catModal') }
 
-document.getElementById('delConfirm').addEventListener('click', async () => {
-  if (!deletingId) return;
-  try {
-    await apiFetch(API_BASE + deletingId + '/', { method:'DELETE' });
-    // reload
-    await loadCategories();
-    document.getElementById('delModal').classList.add('hidden'); document.getElementById('delModal').classList.remove('flex');
-    deletingId = null;
-  } catch (err) {
-    console.error('delete failed', err);
-    if (err.status === 400) alert('Cannot delete category (it may have linked grievances).');
-    else if (err.status === 401) alert('Unauthorized. Login again.');
-    else alert('Delete failed.');
-  }
+// events
+['catClose','catCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('catModal')));
+document.getElementById('addBtn').addEventListener('click',()=>{ editingId = null; document.getElementById('catModalTitle').textContent = 'Add Officer'; document.getElementById('catName').value=''; document.getElementById('catDept').value=''; showModal('catModal'); });
+
+document.getElementById('catSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('catName').value.trim(); const dept = document.getElementById('catDept').value.trim();
+  if(!name){ document.getElementById('catNameErr').style.display='block'; document.getElementById('catNameErr').textContent='Name required'; return }
+  try{
+    if(editingId){ await apiFetch(API_BASE+editingId+'/',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
+    else{ await apiFetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
+    await loadCategories(); hideModal('catModal');
+  }catch(err){ console.error(err); alert('Save failed') }
 });
 
-// init
-(async function init(){
-  try {
-    await loadCategories();
-  } catch(e){ console.error('init error', e); }
-})();
+function onEditClick(e){ e.stopPropagation(); const id = e.currentTarget.getAttribute('data-edit'); if(!id) return; editingId = id; const item = categories.find(x=>String(x.id)===String(id)); openEdit(item); }
+function onDelClick(e){ e.stopPropagation(); deletingId = e.currentTarget.getAttribute('data-del'); document.getElementById('delName').textContent = categories.find(c=>String(c.id)===String(deletingId))?.name || ''; showModal('delModal'); }
 
+['delClose','delCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('delModal')));
+document.getElementById('delConfirm').addEventListener('click', async ()=>{ if(!deletingId) return; const btn = document.getElementById('delConfirm'); btn.disabled=true; btn.textContent='Deleting...'; try{ await apiFetch(API_BASE+deletingId+'/',{method:'DELETE'}); await loadCategories(); hideModal('delModal'); deletingId=null } catch(err){ console.error(err); alert('Delete failed') } finally{ btn.disabled=false; btn.textContent='Delete' } });
+
+// pagination & search
+[ 'prevPage','prevPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ if(currentPage>1){ currentPage--; renderTable() } }) });
+[ 'nextPage','nextPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ const max=Math.ceil(filtered.length/pageSize); if(currentPage<max){ currentPage++; renderTable() } }) });
+
+document.getElementById('searchBox').addEventListener('input', e=>{ const q=(e.target.value||'').trim().toLowerCase(); filtered = q? categories.filter(c=>{ const name = (typeof c.name==='object'?c.name.name:(c.name||'')); const dept = (typeof c.department==='object'?c.department.name:(c.department||'')); return (String(name)+' '+String(dept)).toLowerCase().includes(q) }) : categories.slice(); currentPage=1; renderTable(); });
+
+loadCategories();
 </script>
-
 <script>lucide.createIcons();</script>
 </body>
 </html>
+

@@ -14,6 +14,7 @@
   <link rel="icon" href="{% static 'images/favicon.ico' %}">
 
   <style>
+    /* (kept your original styles as-is) */
     :root{
       --bg-start:#071124; --bg-end:#072f2e;
       --brand:#0ea5a4; --brand-dark:#0b8f8b;
@@ -213,7 +214,7 @@
       </div>
     </section>
 
-    <!-- MODAL -->
+    <!-- MODAL (kept same) -->
     <div id="userModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
       <div class="sheet glass">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -273,128 +274,129 @@
       <option value="admin">admin</option><option value="officer" selected>officer</option><option value="citizen">citizen</option>
     </select>
 
-    <!-- debug screenshot shown faintly -->
-    <img src="/mnt/data/Screenshot 2025-11-20 145052.png" alt="debug" style="position:fixed;right:12px;bottom:12px;width:220px;opacity:.04;pointer-events:none;">
   </main>
 </div>
 
-<!-- Custom-select JS: transforms visible .custom-select and syncs with the hidden native select (id in data-target).
-     Also portals cs-list into body to avoid parent overflow/backdrop clipping. -->
+<!-- Custom-select JS (improved) -->
 <script>
 (function(){
   function setupCustomSelect(wrapper){
-    if (!wrapper || wrapper.dataset.csInit === '1') return;
-    wrapper.dataset.csInit = '1';
-    const targetId = wrapper.dataset.target;
-    const native = document.getElementById(targetId);
-    const btn = wrapper.querySelector('.cs-btn');
-    const labelEl = wrapper.querySelector('.label');
-    const list = wrapper.querySelector('.cs-list');
-    const items = Array.from(list ? list.querySelectorAll('.cs-item') : []);
+    try {
+      if (!wrapper || wrapper.dataset.csInit === '1') return;
+      wrapper.dataset.csInit = '1';
+      const targetId = wrapper.dataset.target;
+      const native = document.getElementById(targetId);
+      const btn = wrapper.querySelector('.cs-btn');
+      const labelEl = wrapper.querySelector('.label');
+      const list = wrapper.querySelector('.cs-list');
+      const items = Array.from(list ? list.querySelectorAll('.cs-item') : []);
 
-    // initial label from native if present
-    if (native) {
-      const opt = native.options[native.selectedIndex];
-      if (opt) labelEl.textContent = opt.text;
-    } else if (items[0]) {
-      labelEl.textContent = items[0].textContent;
-    }
-
-    // create portal container to avoid clipping/styling bleed
-    const portal = document.createElement('div');
-    portal.className = 'cs-list-portal';
-    portal.style.position = 'absolute';
-    portal.style.zIndex = 9999;
-    portal.style.display = 'none';
-    portal.appendChild(list);
-    document.body.appendChild(portal);
-    list.style.display = 'none';
-
-    function openPortal(){
-      const rect = btn.getBoundingClientRect();
-      portal.style.left = rect.left + 'px';
-      portal.style.top = (rect.bottom + 6) + 'px';
-      portal.style.width = rect.width + 'px';
-      portal.style.display = 'block';
-      list.style.display = 'block';
-      wrapper.setAttribute('aria-expanded','true');
-      const sel = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
-      if (sel) sel.scrollIntoView({block:'nearest'});
-    }
-    function closePortal(){
-      list.style.display = 'none';
-      portal.style.display = 'none';
-      wrapper.setAttribute('aria-expanded','false');
-    }
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (portal.style.display === 'block') closePortal(); else openPortal();
-    });
-
-    // keyboard support
-    wrapper.addEventListener('keydown', (e) => {
-      const KEY = { ENTER:13, SPACE:32, ESC:27, ARROW_DOWN:40, ARROW_UP:38 };
-      const visible = portal.style.display === 'block';
-      if (e.keyCode === KEY.ENTER || e.keyCode === KEY.SPACE) {
-        e.preventDefault();
-        if (!visible) openPortal(); else {
-          const focus = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
-          if (focus) focus.click();
-        }
-      } else if (e.keyCode === KEY.ESC) {
-        closePortal();
-      } else if (e.keyCode === KEY.ARROW_DOWN || e.keyCode === KEY.ARROW_UP) {
-        e.preventDefault();
-        const activeItems = Array.from(list.querySelectorAll('.cs-item:not(.cs-disabled)'));
-        if (!activeItems.length) return;
-        let idx = activeItems.findIndex(i => i.getAttribute('aria-selected') === 'true');
-        if (idx === -1) idx = 0;
-        else idx = (e.keyCode === KEY.ARROW_DOWN) ? Math.min(activeItems.length-1, idx+1) : Math.max(0, idx-1);
-        activeItems.forEach(i => i.removeAttribute('aria-selected'));
-        activeItems[idx].setAttribute('aria-selected','true');
-        activeItems[idx].scrollIntoView({block:'nearest'});
-      }
-    });
-
-    items.forEach(item => {
-      item.addEventListener('click', (ev) => {
-        const v = item.dataset.value;
-        const text = item.textContent;
-        labelEl.textContent = text;
-        items.forEach(i=>i.removeAttribute('aria-selected'));
-        item.setAttribute('aria-selected','true');
-        if (native) {
-          native.value = v;
-          native.dispatchEvent(new Event('change', { bubbles:true }));
-        }
-        closePortal();
-      });
-    });
-
-    // close on outside click
-    document.addEventListener('click', (e) => { if (!wrapper.contains(e.target) && !portal.contains(e.target)) closePortal(); });
-    window.addEventListener('resize', closePortal);
-    window.addEventListener('scroll', closePortal, true);
-
-    // sync native -> custom
-    if (native) {
-      native.addEventListener('change', () => {
+      // initial label from native if present
+      if (native) {
         const opt = native.options[native.selectedIndex];
-        if (opt) {
-          labelEl.textContent = opt.text;
-          items.forEach(i => i.removeAttribute('aria-selected'));
-          const hit = items.find(i => String(i.dataset.value) === String(native.value));
-          if (hit) hit.setAttribute('aria-selected','true');
+        if (opt) labelEl.textContent = opt.text;
+      } else if (items[0]) {
+        labelEl.textContent = items[0].textContent;
+      }
+
+      // create portal container to avoid clipping/styling bleed
+      const portal = document.createElement('div');
+      portal.className = 'cs-list-portal';
+      portal.style.position = 'absolute';
+      portal.style.zIndex = 9999;
+      portal.style.display = 'none';
+      // move list into portal (this prevents parent overflow from clipping it)
+      portal.appendChild(list);
+      document.body.appendChild(portal);
+      list.style.display = 'none';
+
+      function openPortal(){
+        const rect = btn.getBoundingClientRect();
+        portal.style.left = rect.left + 'px';
+        portal.style.top = (rect.bottom + 6) + 'px';
+        portal.style.width = rect.width + 'px';
+        portal.style.display = 'block';
+        list.style.display = 'block';
+        wrapper.setAttribute('aria-expanded','true');
+        const sel = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
+        if (sel) sel.scrollIntoView({block:'nearest'});
+      }
+      function closePortal(){
+        try { list.style.display = 'none'; portal.style.display = 'none'; wrapper.setAttribute('aria-expanded','false'); } catch(e){ /* ignore */ }
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (portal.style.display === 'block') closePortal(); else openPortal();
+      });
+
+      // keyboard support
+      wrapper.addEventListener('keydown', (e) => {
+        const KEY = { ENTER:13, SPACE:32, ESC:27, ARROW_DOWN:40, ARROW_UP:38 };
+        const visible = portal.style.display === 'block';
+        if (e.keyCode === KEY.ENTER || e.keyCode === KEY.SPACE) {
+          e.preventDefault();
+          if (!visible) openPortal(); else {
+            const focus = list.querySelector('.cs-item[aria-selected="true"]') || list.querySelector('.cs-item');
+            if (focus) focus.click();
+          }
+        } else if (e.keyCode === KEY.ESC) {
+          closePortal();
+        } else if (e.keyCode === KEY.ARROW_DOWN || e.keyCode === KEY.ARROW_UP) {
+          e.preventDefault();
+          const activeItems = Array.from(list.querySelectorAll('.cs-item:not(.cs-disabled)'));
+          if (!activeItems.length) return;
+          let idx = activeItems.findIndex(i => i.getAttribute('aria-selected') === 'true');
+          if (idx === -1) idx = 0;
+          else idx = (e.keyCode === KEY.ARROW_DOWN) ? Math.min(activeItems.length-1, idx+1) : Math.max(0, idx-1);
+          activeItems.forEach(i => i.removeAttribute('aria-selected'));
+          activeItems[idx].setAttribute('aria-selected','true');
+          activeItems[idx].scrollIntoView({block:'nearest'});
         }
       });
-    }
 
-    console.log('[CSD] converted', targetId);
+      items.forEach(item => {
+        item.addEventListener('click', (ev) => {
+          const v = item.dataset.value;
+          const text = item.textContent;
+          labelEl.textContent = text;
+          items.forEach(i=>i.removeAttribute('aria-selected'));
+          item.setAttribute('aria-selected','true');
+          if (native) {
+            native.value = v;
+            native.dispatchEvent(new Event('change', { bubbles:true }));
+            console.log('[CSD] set native', targetId, '=>', v);
+          }
+          closePortal();
+        });
+      });
+
+      // close on outside click
+      document.addEventListener('click', (e) => { if (!wrapper.contains(e.target) && !portal.contains(e.target)) closePortal(); });
+      window.addEventListener('resize', closePortal);
+      window.addEventListener('scroll', closePortal, true);
+
+      // sync native -> custom
+      if (native) {
+        native.addEventListener('change', () => {
+          const opt = native.options[native.selectedIndex];
+          if (opt) {
+            labelEl.textContent = opt.text;
+            items.forEach(i => i.removeAttribute('aria-selected'));
+            const hit = items.find(i => String(i.dataset.value) === String(native.value));
+            if (hit) hit.setAttribute('aria-selected','true');
+          }
+        });
+      }
+
+      console.log('[CSD] converted', targetId);
+    } catch (err) {
+      console.error('setupCustomSelect error', err);
+    }
   }
 
   function convertAll(){
-    document.querySelectorAll('.custom-select').forEach(setupCustomSelect);
+    try { document.querySelectorAll('.custom-select').forEach(setupCustomSelect); } catch(e){ console.error(e); }
   }
   document.addEventListener('DOMContentLoaded', convertAll);
   window.addEventListener('load', convertAll);
@@ -414,121 +416,150 @@
 })();
 </script>
 
-<!-- Application JS: users API, modal, pagination, bulk actions, export -->
+<!-- Application JS: users API, modal, pagination, bulk actions, export (improved + debug) -->
 <script>
-function getCookie(name){ const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)'); return v? v.pop() : ''; }
-const API = '/adminpanel/api/';
-let users = [], page = 1, page_size = 25, total = 0;
-let selected = new Set();
-let editingUserId = null;
-
-function apiFetch(url, opts={}) {
-  opts.credentials = 'same-origin';
-  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
-  const method = (opts.method||'GET').toUpperCase();
-  if (['POST','PUT','PATCH','DELETE'].includes(method)) opts.headers['X-CSRFToken'] = getCookie('csrftoken');
-  return fetch(url, opts).then(async res => {
-    if (!res.ok) {
-      const txt = await res.text().catch(()=>null);
-      const err = new Error('HTTP ' + res.status + (txt?(' - '+txt):''));
-      err.status = res.status;
-      throw err;
+(function(){
+  function getCookie(name){ const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)'); return v? v.pop() : ''; }
+  const API = '/adminpanel/api/';  // adjust if your API root differs
+  let users = [], page = 1, page_size = 25, total = 0;
+  let selected = new Set();
+  let editingUserId = null;
+  function apiFetch(url, opts={}) {
+    opts.credentials = 'same-origin';
+    opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
+    const method = (opts.method||'GET').toUpperCase();
+    if (['POST','PUT','PATCH','DELETE'].includes(method)) {
+      // use the canonical header name expected by Django
+      opts.headers['X-CSRFToken'] = getCookie('csrftoken');
     }
-    return res.json().catch(()=>null);
-  });
-}
-
-function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent = v; }
-
-async function loadUsers() {
-  page_size = parseInt(document.getElementById('pageSize').value || 25);
-  const role = document.getElementById('filterRole').value;
-  const status = document.getElementById('filterStatus').value;
-  const search = document.getElementById('search').value;
-  const q = new URLSearchParams({ page, page_size });
-  if (role) q.set('role', role);
-  if (status) q.set('status', status);
-  if (search) q.set('search', search);
-
-  try {
-    const payload = await apiFetch(API + 'users/?' + q.toString());
-    total = payload.count || 0;
-    users = payload.results || [];
-    renderUsers();
-    setText('totalUsers', total);
-    setText('pageInfo', page);
-  } catch (err) {
-    console.error('loadUsers', err);
-    document.getElementById('userBody').innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--text-muted);">Failed to load users. Check console.</td></tr>';
+    console.log('[API] Request', method, url, opts.body ? JSON.parse(opts.body) : null);
+    return fetch(url, opts).then(async res => {
+      const text = await res.text().catch(()=>null);
+      let body = null;
+      try { body = text ? JSON.parse(text) : null; } catch(e) { body = text; }
+      if (!res.ok) {
+        const err = new Error('HTTP ' + res.status + ' ' + res.statusText);
+        err.status = res.status;
+        err.body = body;
+        console.error('[API] Error response', { url, status: res.status, body });
+        throw err;
+      }
+      return body;
+    });
   }
-}
 
-function renderUsers(){
-  const tbody = document.getElementById('userBody'); tbody.innerHTML = '';
-  if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--text-muted);">No users found.</td></tr>'; return; }
-  users.forEach(u=>{
-    const tr=document.createElement('tr');
-    const checked = selected.has(String(u.id)) ? 'checked' : '';
-    tr.innerHTML = `
-      <td><input class="rowCheckbox" data-id="${u.id}" type="checkbox" ${checked} /></td>
-      <td>${u.id}</td>
-      <td>${escapeHtml(u.username)}</td>
-      <td>${escapeHtml((u.first_name||'') + ' ' + (u.last_name||''))}</td>
-      <td>${escapeHtml(u.email||'')}</td>
-      <td>${escapeHtml(u.role||'')}</td>
-      <td>${u.is_active ? 'Active' : 'Inactive'}</td>
-      <td>${u.last_login ? new Date(u.last_login).toLocaleString() : '-'}</td>
-      <td>
-        <button data-edit="${u.id}" class="btn-accent">Edit</button>
-        <button data-reset="${u.id}" class="btn-primary">Reset PW</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-  Array.from(document.querySelectorAll('.rowCheckbox')).forEach(cb=>cb.addEventListener('change',(e)=>{ const id=e.target.getAttribute('data-id'); if(e.target.checked) selected.add(String(id)); else selected.delete(String(id)); setText('selectedCount', selected.size); }));
-  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click', onEdit));
-  Array.from(document.querySelectorAll('button[data-reset]')).forEach(b=>b.addEventListener('click', onResetPw));
-}
 
-document.getElementById('searchBtn').addEventListener('click', ()=> { page=1; loadUsers(); });
-document.getElementById('prevPage').addEventListener('click', ()=> { if(page>1){ page--; loadUsers(); }});
-document.getElementById('nextPage').addEventListener('click', ()=> { if(page*page_size < total){ page++; loadUsers(); }});
-document.getElementById('selectAll').addEventListener('change', (e)=> { if (e.target.checked) { users.forEach(u => selected.add(String(u.id))); } else { users.forEach(u => selected.delete(String(u.id))); } setText('selectedCount', selected.size); renderUsers(); });
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function setText(id,v){ const el=document.getElementById(id); if(el) el.textContent = v; }
 
-document.getElementById('applyBulk').addEventListener('click', async ()=> {
-  const action = document.getElementById('bulkAction').value;
-  if (!action) return alert('Select a bulk action');
-  if (!selected.size) return alert('No users selected');
-  const ids = Array.from(selected).map(x=>parseInt(x));
-  let payload = { action:'', ids };
-  if (action === 'activate') payload.action = 'activate';
-  else if (action === 'deactivate') payload.action = 'deactivate';
-  else if (action.startsWith('set_role_')) { payload.action = 'set_role'; payload.role = action.replace('set_role_',''); }
-  try {
-    await apiFetch(API + 'users/bulk/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    alert('Bulk action applied'); selected.clear(); setText('selectedCount', 0); loadUsers();
-  } catch (err) { console.error('bulk', err); alert('Bulk failed'); }
-});
+  async function loadUsers() {
+    page_size = parseInt(document.getElementById('pageSize').value || 25);
+    const role = document.getElementById('filterRole').value;
+    const status = document.getElementById('filterStatus').value;
+    const search = document.getElementById('search').value;
+    const q = new URLSearchParams({ page, page_size });
+    if (role) q.set('role', role);
+    if (status) q.set('status', status);
+    if (search) q.set('search', search);
 
-document.getElementById('addUserBtn').addEventListener('click', ()=> {
-  editingUserId = null;
-  document.getElementById('userModalTitle').textContent = 'Add user (manual)';
-  document.getElementById('u_username').value = '';
-  document.getElementById('u_first').value = '';
-  document.getElementById('u_last').value = '';
-  document.getElementById('u_email').value = '';
-  document.getElementById('u_role').value = 'officer';
-  // update visible custom label
-  const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
-  if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = 'officer';
-  document.getElementById('u_active').checked = true;
-  showModal('userModal');
-});
-document.getElementById('u_cancel').addEventListener('click', ()=> hideModal('userModal'));
-document.getElementById('userModalClose').addEventListener('click', ()=> hideModal('userModal'));
+    // DEBUG: show exact request you'll make
+    console.log('[DEBUG] loadUsers -> url params:', q.toString());
+    try {
+      const payload = await apiFetch(API + 'users/?' + q.toString());
+      console.log('[DEBUG] users payload:', payload);
+      total = payload && (payload.count || payload.total || 0) || 0;
+      users = payload && (payload.results || payload.items || []) || [];
+      renderUsers();
+      setText('totalUsers', total);
+      setText('pageInfo', page);
+    } catch (err) {
+      console.error('loadUsers', err);
+      document.getElementById('userBody').innerHTML = '<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--text-muted);">Failed to load users. Check console.</td></tr>';
+    }
+  }
 
-document.getElementById('u_save').addEventListener('click', async ()=>{
-  const payload = { first_name: document.getElementById('u_first').value, last_name: document.getElementById('u_last').value, email: document.getElementById('u_email').value, role: document.getElementById('u_role').value, is_active: document.getElementById('u_active').checked };
+  function renderUsers(){
+    const tbody = document.getElementById('userBody'); tbody.innerHTML = '';
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="padding:28px;text-align:center;color:var(--text-muted);">No users found.</td></tr>'; return; }
+    users.forEach(u=>{
+      const tr=document.createElement('tr');
+      const checked = selected.has(String(u.id)) ? 'checked' : '';
+      tr.innerHTML = `
+        <td><input class="rowCheckbox" data-id="${u.id}" type="checkbox" ${checked} /></td>
+        <td>${u.id}</td>
+        <td>${escapeHtml(u.username)}</td>
+        <td>${escapeHtml((u.first_name||'') + ' ' + (u.last_name||''))}</td>
+        <td>${escapeHtml(u.email||'')}</td>
+        <td>${escapeHtml(u.role||'')}</td>
+        <td>${u.is_active ? 'Active' : 'Inactive'}</td>
+        <td>${u.last_login ? new Date(u.last_login).toLocaleString() : '-'}</td>
+        <td>
+          <button data-edit="${u.id}" class="btn-accent">Edit</button>
+          <button data-reset="${u.id}" class="btn-primary">Reset PW</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    Array.from(document.querySelectorAll('.rowCheckbox')).forEach(cb=>cb.addEventListener('change',(e)=>{ const id=e.target.getAttribute('data-id'); if(e.target.checked) selected.add(String(id)); else selected.delete(String(id)); setText('selectedCount', selected.size); }));
+    Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click', onEdit));
+    Array.from(document.querySelectorAll('button[data-reset]')).forEach(b=>b.addEventListener('click', onResetPw));
+  }
+
+  // wire controls (safe to run before DOMContentLoaded because we call after load)
+  function wireControls(){
+    const searchBtn = document.getElementById('searchBtn');
+    if (searchBtn) searchBtn.addEventListener('click', ()=> { page=1; loadUsers(); });
+
+    const prevPage = document.getElementById('prevPage'), nextPage = document.getElementById('nextPage');
+    if (prevPage) prevPage.addEventListener('click', ()=> { if(page>1){ page--; loadUsers(); }});
+    if (nextPage) nextPage.addEventListener('click', ()=> { if(page*page_size < total){ page++; loadUsers(); }});
+
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) selectAll.addEventListener('change', (e)=> { if (e.target.checked) { users.forEach(u => selected.add(String(u.id))); } else { users.forEach(u => selected.delete(String(u.id))); } setText('selectedCount', selected.size); renderUsers(); });
+
+    const applyBulk = document.getElementById('applyBulk');
+    if (applyBulk) applyBulk.addEventListener('click', async ()=> {
+      const action = document.getElementById('bulkAction').value;
+      if (!action) return alert('Select a bulk action');
+      if (!selected.size) return alert('No users selected');
+      const ids = Array.from(selected).map(x=>parseInt(x));
+      let payload = { action:'', ids };
+      if (action === 'activate') payload.action = 'activate';
+      else if (action === 'deactivate') payload.action = 'deactivate';
+      else if (action.startsWith('set_role_')) { payload.action = 'set_role'; payload.role = action.replace('set_role_',''); }
+      try {
+        await apiFetch(API + 'users/bulk/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        alert('Bulk action applied'); selected.clear(); setText('selectedCount', 0); loadUsers();
+      } catch (err) { console.error('bulk', err); alert('Bulk failed'); }
+    });
+
+    const addUserBtn = document.getElementById('addUserBtn');
+    if (addUserBtn) addUserBtn.addEventListener('click', ()=> {
+      editingUserId = null;
+      document.getElementById('userModalTitle').textContent = 'Add user (manual)';
+      document.getElementById('u_username').value = '';
+      document.getElementById('u_first').value = '';
+      document.getElementById('u_last').value = '';
+      document.getElementById('u_email').value = '';
+      document.getElementById('u_role').value = 'officer';
+      const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
+      if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = 'officer';
+      document.getElementById('u_active').checked = true;
+      showModal('userModal');
+    });
+
+    const u_cancel = document.getElementById('u_cancel'), userModalClose = document.getElementById('userModalClose');
+    if (u_cancel) u_cancel.addEventListener('click', ()=> hideModal('userModal'));
+    if (userModalClose) userModalClose.addEventListener('click', ()=> hideModal('userModal'));
+
+    const u_save = document.getElementById('u_save');
+    if (u_save) u_save.addEventListener('click', async ()=>{
+  const payload = {
+    first_name: document.getElementById('u_first').value,
+    last_name: document.getElementById('u_last').value,
+    email: document.getElementById('u_email').value,
+    role: document.getElementById('u_role').value,
+    is_active: document.getElementById('u_active').checked
+  };
   try {
     if (editingUserId) {
       await apiFetch(API + `users/${editingUserId}/`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -536,54 +567,89 @@ document.getElementById('u_save').addEventListener('click', async ()=>{
     } else {
       const username = document.getElementById('u_username').value || (payload.email ? payload.email.split('@')[0] : 'user' + Date.now());
       const password = Math.random().toString(36).slice(-8);
-      await apiFetch(API + 'users/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(Object.assign(payload,{username,password})) });
+      const createPayload = Object.assign({}, payload, { username, password });
+      console.log('[DEBUG] create user payload', createPayload);
+      await apiFetch(API + 'users/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(createPayload) });
       alert('User created');
     }
     hideModal('userModal'); loadUsers();
-  } catch (err) { console.error('save user', err); alert('Save failed'); }
+  } catch (err) {
+    console.error('save user error', err);
+    // show better message
+    let msg = 'Save failed';
+    if (err.body) {
+      if (typeof err.body === 'object') {
+        // try to format validation errors
+        msg = Object.entries(err.body).map(([k,v]) => `${k}: ${Array.isArray(v) ? v.join('; ') : v}`).join('\n');
+      } else {
+        msg = String(err.body);
+      }
+    } else if (err.status) {
+      msg = `Request failed: HTTP ${err.status}`;
+    }
+    alert(msg);
+  }
 });
 
-function onEdit(e){
-  const id = e.currentTarget.getAttribute('data-edit'); editingUserId = id; const u = users.find(x=>String(x.id)===String(id)); if(!u) return alert('User not found');
-  document.getElementById('userModalTitle').textContent = 'Edit user';
-  document.getElementById('u_username').value = u.username || '';
-  document.getElementById('u_first').value = u.first_name || '';
-  document.getElementById('u_last').value = u.last_name || '';
-  document.getElementById('u_email').value = u.email || '';
-  document.getElementById('u_role').value = u.role || '';
-  const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
-  if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = u.role || 'officer';
-  document.getElementById('u_active').checked = !!u.is_active;
-  showModal('userModal');
-}
 
-async function onResetPw(e){
-  const id = e.currentTarget.getAttribute('data-reset'); if(!confirm('Send password reset email to this user?')) return;
-  try { const res = await apiFetch(API + `users/${id}/reset_password/`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ send_email: true }) }); alert(res.detail || 'Reset requested'); } catch (err) { console.error('reset', err); alert('Reset failed'); }
-}
+    document.getElementById('exportBtn') && document.getElementById('exportBtn').addEventListener('click', async ()=> {
+      try {
+        const res = await apiFetch(API + `users/?page=1&page_size=1000`);
+        const all = res.results || res.items || [];
+        if (!all.length) return alert('No users to export');
+        const cols = ['id','username','email','first_name','last_name','role','is_active','last_login'];
+        const csv = [cols.join(',')].concat(all.map(u => cols.map(c => `"${String(u[c]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
+        const blob = new Blob([csv], { type:'text/csv' });
+        const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`users_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+      } catch (err) { console.error('export', err); alert('Export failed'); }
+    });
 
-function showModal(id){ const el=document.getElementById(id); el.style.display='flex'; el.setAttribute('aria-hidden','false'); const first = el.querySelector('input,select,button'); if(first) first.focus(); }
-function hideModal(id){ const el=document.getElementById(id); el.style.display='none'; el.setAttribute('aria-hidden','true'); }
+    // row edit and reset listeners attached in renderUsers()
+  }
 
-document.getElementById('exportBtn').addEventListener('click', async ()=> {
-  try {
-    const res = await apiFetch(API + `users/?page=1&page_size=1000`);
-    const all = res.results || [];
-    if (!all.length) return alert('No users to export');
-    const cols = ['id','username','email','first_name','last_name','role','is_active','last_login'];
-    const csv = [cols.join(',')].concat(all.map(u => cols.map(c => `"${String(u[c]||'').replace(/"/g,'""')}"`).join(','))).join('\n');
-    const blob = new Blob([csv], { type:'text/csv' });
-    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`users_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-  } catch (err) { console.error('export', err); alert('Export failed'); }
-});
+  function onEdit(e){
+    const id = e.currentTarget.getAttribute('data-edit'); editingUserId = id; const u = users.find(x=>String(x.id)===String(id)); if(!u) return alert('User not found');
+    document.getElementById('userModalTitle').textContent = 'Edit user';
+    document.getElementById('u_username').value = u.username || '';
+    document.getElementById('u_first').value = u.first_name || '';
+    document.getElementById('u_last').value = u.last_name || '';
+    document.getElementById('u_email').value = u.email || '';
+    document.getElementById('u_role').value = u.role || '';
+    const modalRoleWrapper = document.querySelector('.custom-select[data-target="u_role"]');
+    if (modalRoleWrapper) modalRoleWrapper.querySelector('.label').textContent = u.role || 'officer';
+    document.getElementById('u_active').checked = !!u.is_active;
+    showModal('userModal');
+  }
 
-// initialize
-(async function(){ await loadUsers(); })();
+  async function onResetPw(e){
+    const id = e.currentTarget.getAttribute('data-reset'); if(!confirm('Send password reset email to this user?')) return;
+    try { const res = await apiFetch(API + `users/${id}/reset_password/`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ send_email: true }) }); alert(res.detail || 'Reset requested'); } catch (err) { console.error('reset', err); alert('Reset failed'); }
+  }
+
+  function showModal(id){ const el=document.getElementById(id); el.style.display='flex'; el.setAttribute('aria-hidden','false'); const first = el.querySelector('input,select,button'); if(first) first.focus(); }
+  function hideModal(id){ const el=document.getElementById(id); el.style.display='none'; el.setAttribute('aria-hidden','true'); }
+
+  // initialize after DOM is ready
+  document.addEventListener('DOMContentLoaded', function(){
+    wireControls();
+
+    // auto-refresh when filters change (native selects dispatch change from custom-select)
+    ['filterRole','filterStatus','pageSize'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', ()=> { page = 1; loadUsers(); });
+    });
+
+    // also reload when pressing Enter in the search input
+    const searchInput = document.getElementById('search');
+    if (searchInput) searchInput.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') { page = 1; loadUsers(); } });
+
+    // initial load
+    loadUsers();
+  });
+
+})();
 </script>
 
 <script>lucide.createIcons();</script>
 </body>
 </html>
-
-
-

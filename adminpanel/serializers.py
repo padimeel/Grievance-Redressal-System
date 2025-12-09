@@ -14,28 +14,11 @@ from adminpanel.models import (
 User = get_user_model()
 
 
-# ------------------------
-# Small helper serializers
-# ------------------------
+# Small helpers
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
         fields = ("id", "name", "code")
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    # readonly fields provided by view annotation
-    grievance_count = serializers.IntegerField(read_only=True)
-    created_at = serializers.DateTimeField(read_only=True)
-    updated_at = serializers.DateTimeField(read_only=True)
-
-    class Meta:
-        model = Category
-        fields = ['id', 'name', 'department', 'grievance_count', 'created_at', 'updated_at']
-        # if department is an object you may want to nest or serialize differently
-    class Meta:
-        model = Category
-        fields = ("id", "name", "department", "department_id")
 
 
 class SimpleUserSerializer(serializers.ModelSerializer):
@@ -46,16 +29,40 @@ class SimpleUserSerializer(serializers.ModelSerializer):
         fields = ("id", "username", "full_name", "first_name", "last_name", "email")
 
     def get_full_name(self, obj):
-        # handle both User.get_full_name and fallback
-        try:
-            return obj.get_full_name()
-        except Exception:
-            return f"{getattr(obj, 'first_name', '')} {getattr(obj, 'last_name', '')}".strip()
+        return (obj.get_full_name() or f"{obj.first_name} {obj.last_name}".strip())
 
 
-# ------------------------
+# Category serializer
+class CategorySerializer(serializers.ModelSerializer):
+    department = DepartmentSerializer(read_only=True)
+    department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        source="department",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
+    department_name = serializers.CharField(source="department.name", read_only=True)
+
+    grievance_count = serializers.IntegerField(read_only=True, required=False)
+    created_at = serializers.DateTimeField(read_only=True, required=False)
+    updated_at = serializers.DateTimeField(read_only=True, required=False)
+
+    class Meta:
+        model = Category
+        fields = (
+            "id",
+            "name",
+            "department",
+            "department_id",
+            "department_name",
+            "grievance_count",
+            "created_at",
+            "updated_at",
+        )
+
+
 # Remark & Feedback
-# ------------------------
 class GrievanceRemarkSerializer(serializers.ModelSerializer):
     officer = SimpleUserSerializer(read_only=True)
     officer_id = serializers.PrimaryKeyRelatedField(
@@ -76,10 +83,13 @@ class FeedbackSerializer(serializers.ModelSerializer):
         fields = ("id", "grievance", "rating", "comments", "submitted_at")
         read_only_fields = ("id", "submitted_at")
 
+    def validate_grievance(self, value):
+        if getattr(value, "status", None) != Grievance.STATUS_RESOLVED:
+            raise serializers.ValidationError("Feedback can only be submitted for resolved grievances.")
+        return value
 
-# ------------------------
-# Grievance serializers
-# ------------------------
+
+# Grievance list/detail
 class GrievanceListSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
@@ -112,20 +122,20 @@ class GrievanceDetailSerializer(GrievanceListSerializer):
         fields = GrievanceListSerializer.Meta.fields + ("remarks", "feedback")
 
 
+# Grievance create/update - accepts department_id OR department_name
 class GrievanceCreateUpdateSerializer(serializers.ModelSerializer):
-    # accept FK ids from client for writes
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source="user", required=False, allow_null=True
-    )
-    category_id = serializers.PrimaryKeyRelatedField(
-        queryset=Category.objects.all(), source="category", required=False, allow_null=True
-    )
-    department_id = serializers.PrimaryKeyRelatedField(
-        queryset=Department.objects.all(), source="department", required=False, allow_null=True
-    )
-    assigned_officer_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(), source="assigned_officer", required=False, allow_null=True
-    )
+    user_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source="user", required=False, allow_null=True)
+    category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source="category", required=False, allow_null=True)
+
+    # prefer numeric FK writes:
+    department_id = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), source="department", required=False, allow_null=True)
+    # also accept a name (string). If provided and no matching dept exists, we create it (you can change to raise error).
+    department_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    department = DepartmentSerializer(read_only=True)
+    assigned_officer_id = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), source="assigned_officer", required=False, allow_null=True)
+    assigned_officer = SimpleUserSerializer(read_only=True)
+    attached_file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Grievance
@@ -137,8 +147,11 @@ class GrievanceCreateUpdateSerializer(serializers.ModelSerializer):
             "description",
             "category_id",
             "department_id",
+            "department_name",
+            "department",
             "attached_file",
             "assigned_officer_id",
+            "assigned_officer",
             "status",
             "created_at",
             "updated_at",
@@ -146,27 +159,31 @@ class GrievanceCreateUpdateSerializer(serializers.ModelSerializer):
         read_only_fields = ("tracking_id", "created_at", "updated_at")
 
     def validate_status(self, value):
-        allowed = {c[0] for c in Grievance.STATUS_CHOICES}
+        allowed = {c[0] for c in getattr(Grievance, "STATUS_CHOICES", [])}
         if value not in allowed:
             raise serializers.ValidationError("Invalid status value.")
         return value
 
-    def create(self, validated_data):
-        # If you want to force the creating user: validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+    def validate(self, attrs):
+        # If department_name provided, and department wasn't already set via department_id,
+        # find (case-insensitive) or create the Department instance.
+        dept_name = attrs.pop("department_name", None)
+        if dept_name and not attrs.get("department"):
+            name_clean = str(dept_name).strip()
+            if name_clean:
+                dept = Department.objects.filter(name__iexact=name_clean).first()
+                if not dept:
+                    # Auto-create department. If you'd rather reject unknown names, replace with a ValidationError.
+                    dept = Department.objects.create(name=name_clean)
+                attrs["department"] = dept
+        return attrs
 
-    def update(self, instance, validated_data):
-        # You can inspect changes here and create ChangeLog entries in the view if needed
-        return super().update(instance, validated_data)
 
-
-# ------------------------
-# ChangeLog serializer (optional)
-# ------------------------
+# ChangeLog
 class ChangeLogSerializer(serializers.ModelSerializer):
     user = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model = ChangeLog
         fields = ("id", "user", "grievance", "action", "before", "after", "timestamp")
-        read_only_fields = fields
+        read_only_fields = ("id", "user", "grievance", "action", "before", "after", "timestamp")
