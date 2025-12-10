@@ -1,0 +1,1101 @@
+{% comment %} {% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Dashboard</title>
+
+  <!-- Tailwind CDN (dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <style>
+    :root{
+      --bg-start:#071124; --bg-end:#072f2e;
+      --brand:#0ea5a4; --brand-dark:#0b8f8b;
+      --accent:#4f46e5;
+      --text-high:#e6eef3; --text-muted:#a8bbc6;
+    }
+    html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
+    body{
+      background:linear-gradient(180deg,var(--bg-start),var(--bg-end));
+      color:var(--text-high);
+      overflow:hidden; /* Prevent page scrolling */
+    }
+
+    /* layout */
+    .app { display:flex; height:100vh; width:100vw; }
+    aside.sidebar { width:280px; padding:28px; box-sizing:border-box; }
+    main.content { flex:1; padding:20px 28px; box-sizing:border-box; display:flex; flex-direction:column; gap:18px; }
+
+    /* glass */
+    .glass{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
+      backdrop-filter: blur(6px);
+      border-radius:.75rem;
+    }
+
+    /* sidebar */
+    .sidebar .brand { display:flex; gap:.75rem; align-items:center; margin-bottom:18px; }
+    .sidebar .brand img{ width:44px; height:44px; border-radius:.5rem; }
+    .sidebar nav a { display:flex; gap:.6rem; align-items:center; padding:.5rem .6rem; border-radius:.5rem; color:var(--text-high); text-decoration:none; margin-bottom:.25rem; }
+    .sidebar nav a:hover { background: rgba(255,255,255,0.03); }
+
+    /* topbar */
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; gap:12px; }
+    .topbar .left { display:flex; gap:12px; align-items:center; }
+    .topbar .search { display:flex; gap:8px; align-items:center; }
+
+    .search-input{ background: rgba(255,255,255,0.03); color:var(--text-high); border:1px solid rgba(255,255,255,0.04); padding:.45rem .6rem; border-radius:.375rem; min-width:320px; }
+    .btn-primary{ background:linear-gradient(90deg,var(--brand),var(--brand-dark)); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+    .btn-accent{ background:linear-gradient(90deg,var(--accent),#7c3aed); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+
+    /* layout cards + panels */
+    .metrics { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; }
+    .metrics .card { padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
+    .main-grid { display:grid; grid-template-columns: 2fr 1fr; gap:14px; flex:1; min-height:0; } /* min-height:0 to allow internal scroll areas */
+
+    /* table area: internal scrolling only */
+    .grievances-panel { padding:14px; border-radius:12px; display:flex; flex-direction:column; min-height:0; }
+    .filters { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+    /* dark-select / fallback looks */
+    select.dark { background:#07191b; color:var(--text-high); border:1px solid rgba(255,255,255,0.06); padding:.4rem .6rem; border-radius:.375rem; }
+
+    .table-wrapper { overflow:auto; border-radius:8px; background:transparent; flex:1; } /* internal scroll only */
+    table { width:100%; border-collapse:collapse; }
+    thead th{ color:var(--text-muted); font-size:.85rem; padding:.75rem; text-align:left; border-bottom:1px solid rgba(255,255,255,0.04); position:sticky; top:0; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); }
+    tbody td{ padding:.6rem; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; }
+
+    /* analytics panel */
+    .analytics-panel { padding:14px; border-radius:12px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+    .analytics-panel .chart-wrap { flex:1; min-height:160px; display:flex; align-items:center; justify-content:center; }
+
+    /* compact UI */
+    .muted { color:var(--text-muted); font-size:.9rem; }
+    .text-high { color:var(--text-high); }
+
+    /* custom select components (to avoid native white popup) */
+    .cs-wrapper { display:inline-block; position:relative; min-width:140px; }
+    .cs-btn { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.4rem .65rem; border-radius:.35rem; background:linear-gradient(180deg,#07191b,#052225); color:var(--text-high); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+    .cs-list { position:absolute; left:0; right:0; margin-top:.3rem; max-height:260px; overflow:auto; background:#07191b; border-radius:.5rem; border:1px solid rgba(255,255,255,0.06); z-index:1400; box-shadow:0 8px 32px rgba(0,0,0,0.6); }
+    .cs-item { padding:.45rem .7rem; cursor:pointer; color:var(--text-high); }
+    .cs-item:hover, .cs-item[aria-selected="true"] { background: rgba(255,255,255,0.03); }
+
+    /* small screens: collapse sidebar */
+    @media(max-width:1024px){
+      aside.sidebar { display:none; }
+      .app { padding-left:0; }
+      main.content { padding:12px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass" role="navigation" aria-label="Sidebar">
+    <div class="brand">
+      <img src="{% static 'images/favicon.ico' %}" alt="logo">
+      <div>
+        <div style="font-weight:700;">Grievance Admin</div>
+        <div class="muted" style="font-size:.8rem;">Control center</div>
+      </div>
+    </div>
+
+    <nav>
+    <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a>
+    <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a>
+    <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a>
+    <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i> Users</a>
+    <a href="{% url 'adminpanel:categories' %}"><i data-lucide="tag" class="w-4 h-4"></i> Categories</a>
+    <!-- NEW -->
+    <a href="{% url 'adminpanel:settings' %}"><i data-lucide="sliders" class="w-4 h-4"></i> Settings</a>
+  </nav>
+
+    <div style="margin-top:18px;font-size:.85rem;" class="muted">
+      <div>Logged in as</div>
+      <div style="font-weight:600;">{{ request.user.username }}</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+    <!-- TOPBAR -->
+    <div class="topbar glass">
+      <div class="left">
+        <button id="mobileToggle" class="btn-accent" style="display:none;"><i data-lucide="menu"></i></button>
+        <div style="font-size:1.15rem;font-weight:600;">Dashboard</div>
+
+        <div class="search" style="margin-left:12px;">
+          <input id="searchTop" class="search-input" placeholder="Search grievances or users..." aria-label="Search"/>
+          <button id="searchBtn" class="btn-primary">Search</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="exportBtn" class="btn-accent"><i data-lucide="download"></i> Export</button>
+        <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="btn-primary">Sign out</button></form>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics" aria-hidden="false">
+      <div class="card glass">
+        <div>
+          <div class="muted">Total grievances</div>
+          <div id="card-total" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">All time</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="list" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Open</div>
+          <div id="card-open" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">New / In progress</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="clock" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Resolved</div>
+          <div id="card-resolved" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">Completed</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Avg resolution (days)</div>
+          <div id="card-sla" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">SLA</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+      <!-- LEFT: Grievance list (internal scroll) -->
+      <section class="grievances-panel glass" aria-labelledby="grievance-heading">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="filters" aria-hidden="false">
+              <!-- Native selects are present but will be converted to custom dark selects by converter script -->
+              <select id="filter-status" class="dark" aria-label="Filter status">
+                <option value="">All status</option>
+                <option value="new">New</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+
+              <select id="filter-category" class="dark" aria-label="Filter category">
+                <option value="">All categories</option>
+              </select>
+
+              <select id="page-size" class="dark" aria-label="Page size">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+              </select>
+
+              <button id="applyFilters" class="btn-primary">Apply</button>
+            </div>
+          </div>
+
+          <div class="muted">Showing <span id="page-info">Page 1</span></div>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-live="polite" tabindex="0">
+          <table role="table" aria-label="Grievances">
+            <thead>
+              <tr>
+                <th>ID</th><th>Title</th><th>User</th><th>Category</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="grievanceTable">
+              <tr><td colspan="6" style="padding:28px;text-align:center;color:var(--text-muted);">Loading grievances…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+          <div class="muted">Total: <span id="total-count">—</span></div>
+          <div style="display:flex;gap:8px;">
+            <button id="prevPage" class="btn-accent">Prev</button>
+            <button id="nextPage" class="btn-accent">Next</button>
+            <button id="exportCsv" class="btn-primary">Export CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Analytics (internal small scroll if needed) -->
+      <aside class="analytics-panel glass" aria-labelledby="analytics-heading">
+        <h3 id="analytics-heading" style="margin:0;font-weight:600;">Analytics</h3>
+
+        <div class="chart-wrap" style="min-height:180px;">
+          <canvas id="statusChart" height="160"></canvas>
+        </div>
+
+        <div>
+          <div class="muted">Top categories</div>
+          <ul id="topCategories" style="margin-top:6px;max-height:120px;overflow:auto;padding-left:16px;"></ul>
+        </div>
+
+        <div>
+          <div class="muted">Assign officer</div>
+          <select id="officerList" class="dark" style="width:100%;margin-top:6px;">
+            <option value="">Select officer</option>
+          </select>
+          <button id="assignButton" class="btn-accent" style="margin-top:8px;width:100%;">Assign selected</button>
+        </div>
+
+      </aside>
+    </div>
+
+    <!-- small unobtrusive debug / watermark screenshot (local path provided) -->
+    <img src="/mnt/data/Screenshot 2025-11-20 145052.png" alt="debug" style="position:fixed;right:12px;bottom:12px;width:220px;opacity:.06;pointer-events:none;">
+  </main>
+</div>
+
+<!-- Custom select converter + MutationObserver (to avoid native white popup). Converts selects except ones with data-native="1" -->
+<script>
+(function(){
+  function convertSelect(orig) {
+    if (!orig || orig.dataset.native === '1' || orig.dataset.cs === '1') return;
+    orig.dataset.cs = '1';
+    // hide native select
+    orig.style.position = 'absolute';
+    orig.style.left = '-9999px';
+    orig.style.opacity = '0';
+    orig.style.pointerEvents = 'none';
+    orig.tabIndex = -1;
+    orig.setAttribute('aria-hidden','true');
+
+    // prevent native popup
+    const stopNative = e => { e.preventDefault(); e.stopImmediatePropagation && e.stopImmediatePropagation(); return false; };
+    orig.addEventListener('mousedown', stopNative);
+    orig.addEventListener('touchstart', stopNative);
+
+    // build UI
+    const wrap = document.createElement('div'); wrap.className = 'cs-wrapper';
+    const btn = document.createElement('button'); btn.type='button'; btn.className='cs-btn'; btn.setAttribute('aria-haspopup','listbox'); btn.setAttribute('aria-expanded','false');
+    const label = document.createElement('span'); label.className='cs-label'; label.textContent = (orig.options[orig.selectedIndex] || {}).text || '';
+    btn.appendChild(label);
+    const arrow = document.createElement('span'); arrow.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e6eef3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'; btn.appendChild(arrow);
+
+    const list = document.createElement('div'); list.className='cs-list'; list.style.display='none'; list.setAttribute('role','listbox');
+
+    Array.from(orig.options).forEach(opt => {
+      const item = document.createElement('div'); item.className='cs-item'; item.dataset.value = opt.value; item.textContent = opt.text;
+      if (opt.selected) item.setAttribute('aria-selected','true');
+      if (opt.disabled) item.setAttribute('aria-disabled','true');
+      item.addEventListener('click', () => {
+        if (opt.disabled) return;
+        orig.value = item.dataset.value;
+        label.textContent = item.textContent;
+        list.querySelectorAll('.cs-item').forEach(i=>i.removeAttribute('aria-selected'));
+        item.setAttribute('aria-selected','true');
+        list.style.display='none'; btn.setAttribute('aria-expanded','false');
+        orig.dispatchEvent(new Event('change',{bubbles:true}));
+      });
+      list.appendChild(item);
+    });
+    if (!list.children.length) { const e=document.createElement('div'); e.className='cs-item'; e.textContent='No options'; list.appendChild(e); }
+
+    wrap.appendChild(btn); wrap.appendChild(list);
+    orig.parentNode.insertBefore(wrap, orig.nextSibling);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = list.style.display === 'block';
+      document.querySelectorAll('.cs-list').forEach(l => { if (l !== list) l.style.display='none'; if (l.previousSibling) l.previousSibling.setAttribute && l.previousSibling.setAttribute('aria-expanded','false'); });
+      if (open) { list.style.display='none'; btn.setAttribute('aria-expanded','false'); } else { list.style.display='block'; btn.setAttribute('aria-expanded','true'); const sel=list.querySelector('.cs-item[aria-selected="true"]')||list.querySelector('.cs-item'); if(sel) sel.scrollIntoView({block:'nearest'}); }
+    });
+
+    document.addEventListener('click', (ev) => { if (!wrap.contains(ev.target)) { list.style.display='none'; btn.setAttribute('aria-expanded','false'); } });
+
+    orig.addEventListener('change', () => {
+      const v = orig.value;
+      const it = list.querySelector('.cs-item[data-value="'+String(v).replace(/"/g,'\\"')+'"]');
+      if (it) { list.querySelectorAll('.cs-item').forEach(i=>i.removeAttribute('aria-selected')); it.setAttribute('aria-selected','true'); label.textContent = it.textContent; }
+    });
+    // mark
+    console.log('[CS] converted select', orig.id || orig.name || orig);
+  }
+
+  function convertAll(){
+    const sels = Array.from(document.querySelectorAll('select')).filter(s=>s.dataset.native!=='1');
+    sels.forEach(convertSelect);
+  }
+  document.addEventListener('DOMContentLoaded', convertAll);
+  window.addEventListener('load', convertAll);
+
+  // Watch for dynamically added selects
+  const mo = new MutationObserver((mutations) => {
+    let found=false;
+    for (const m of mutations) {
+      m.addedNodes && m.addedNodes.forEach(n => {
+        if (n.nodeType===1) {
+          if (n.matches && n.matches('select')) found=true;
+          if (n.querySelector && n.querySelector('select')) found=true;
+        }
+      });
+    }
+    if (found) setTimeout(convertAll, 60);
+  });
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  window.__cs_convertAll = convertAll;
+})();
+</script>
+
+<!-- App JS: fetch analytics, populate grievances table (internal scrolling), CSV export placeholder -->
+<script>
+async function fetchJSON(url, opts={}) {
+  opts.credentials = 'same-origin';
+  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const t = await res.text().catch(()=>null);
+    const e = new Error('HTTP ' + res.status + (t?(' - '+t):''));
+    e.status = res.status; e.body = t;
+    throw e;
+  }
+  return res.json().catch(()=>null);
+}
+
+async function loadAnalytics(){
+  const api = '/adminpanel/api/analytics/';
+  try {
+    ['card-total','card-open','card-resolved','card-sla'].forEach(id=>document.getElementById(id).textContent='…');
+    const data = await fetchJSON(api);
+    const total = data.total_grievances ?? data.total ?? 0;
+    const by_status = data.by_status || data.byStatus || {};
+    const avg = data.avg_resolution_days ?? data.avg ?? 0;
+    const openCount = (Number(by_status.new||0)+Number(by_status.in_progress||0))||0;
+    const resolvedCount = Number(by_status.resolved||0)||0;
+    document.getElementById('card-total').textContent = total;
+    document.getElementById('card-open').textContent = openCount;
+    document.getElementById('card-resolved').textContent = resolvedCount;
+    document.getElementById('card-sla').textContent = avg;
+
+    // top categories
+    const top = data.top_categories || data.by_category || [];
+    const ul = document.getElementById('topCategories'); ul.innerHTML='';
+    if (Array.isArray(top) && top.length) {
+      top.slice(0,6).forEach(t => {
+        const li=document.createElement('li'); li.textContent = (t.name||t.category||t[0]||'') + ' — ' + (t.count ?? t[1] ?? '');
+        ul.appendChild(li);
+      });
+    } else ul.innerHTML='<li class="muted">No category data</li>';
+
+    // officers
+    const officers = data.officers || data.officer_list || [];
+    const sel = document.getElementById('officerList'); sel.innerHTML = '<option value="">Select officer</option>';
+    if (Array.isArray(officers) && officers.length) {
+      officers.forEach(o => {
+        const opt=document.createElement('option'); opt.value=o.id||o.pk||o.username||o.name; opt.textContent=o.name||o.username||opt.value; sel.appendChild(opt);
+      });
+    }
+
+    // chart
+    const labels = Object.keys(by_status).length ? Object.keys(by_status) : ['No data'];
+    const values = labels.map(k => Number(by_status[k]||0));
+    renderStatusChart(labels, values);
+  } catch (err) {
+    console.error('analytics load failed', err);
+    ['card-total','card-open','card-resolved','card-sla'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('topCategories').innerHTML = '<li class="muted">Could not load analytics</li>';
+  }
+}
+
+let statusChart = null;
+function renderStatusChart(labels, values){
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{ data: values.length?values:[1], backgroundColor: ['rgba(14,165,164,0.9)','rgba(79,70,229,0.9)','rgba(34,197,94,0.9)','rgba(249,115,22,0.9)','rgba(239,68,68,0.9)'] }]
+    },
+    options: { plugins: { legend: { labels: { color: 'rgba(230,238,243,0.9)' } } } }
+  });
+}
+
+async function loadGrievances(){
+  const api = '/adminpanel/api/grievances/';
+  const status = document.getElementById('filter-status').value || '';
+  const category = document.getElementById('filter-category').value || '';
+  const pageSize = document.getElementById('page-size').value || '25';
+  const params = new URLSearchParams({ page:1, page_size: pageSize });
+  if (status) params.set('status', status);
+  if (category) params.set('category', category);
+
+  const tbody = document.getElementById('grievanceTable');
+  tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">Loading…</td></tr>`;
+  try {
+    const payload = await fetchJSON(api + '?' + params.toString());
+    const rows = payload.results || payload.data || payload || [];
+    const total = payload.count ?? payload.total ?? rows.length;
+    document.getElementById('total-count').textContent = total;
+    tbody.innerHTML = '';
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">No grievances found.</td></tr>`; return; }
+    rows.forEach(r => {
+      const tr=document.createElement('tr');
+      const userVal = (r.user && (r.user.username || r.user)) || (r.submitted_by && r.submitted_by.username) || (r.user_name||'');
+      const catVal = (r.category && (r.category.name || r.category)) || r.category || '';
+      tr.innerHTML = `<td>${r.id ?? ''}</td><td>${escapeHtml(r.title ?? r.subject ?? '')}</td><td>${escapeHtml(userVal)}</td><td>${escapeHtml(catVal)}</td><td>${escapeHtml(r.status ?? '')}</td><td><a class="btn-accent" href="/adminpanel/grievances/${r.id}/">View</a></td>`;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('grievances load failed', err);
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">Failed to load grievances.</td></tr>`;
+  }
+}
+
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* exports / UI wiring */
+document.addEventListener('DOMContentLoaded', function(){
+  loadAnalytics();
+  loadGrievances();
+
+  document.getElementById('applyFilters').addEventListener('click', (e)=>{ e.preventDefault(); loadGrievances(); });
+  document.getElementById('searchBtn').addEventListener('click', (e)=>{ e.preventDefault(); loadGrievances(); });
+  document.getElementById('exportCsv').addEventListener('click', (e)=>{ e.preventDefault(); alert('Exporting — use server-side export endpoint for large exports'); });
+  document.getElementById('exportBtn').addEventListener('click', (e)=>{ e.preventDefault(); alert('Export dashboard data — implement server export endpoint'); });
+});
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html> {% endcomment %}
+
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Dashboard</title>
+
+  <!-- Tailwind CDN (dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <style>
+    :root{
+      --bg-start:#071124; --bg-end:#072f2e;
+      --brand:#0ea5a4; --brand-dark:#0b8f8b;
+      --accent:#4f46e5;
+      --text-high:#e6eef3; --text-muted:#a8bbc6;
+    }
+    html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
+    body{
+      background:linear-gradient(180deg,var(--bg-start),var(--bg-end));
+      color:var(--text-high);
+      overflow:hidden; /* Prevent page scrolling */
+    }
+
+    /* layout */
+    .app { display:flex; height:100vh; width:100vw; }
+    aside.sidebar { width:280px; padding:28px; box-sizing:border-box; }
+    main.content { flex:1; padding:20px 28px; box-sizing:border-box; display:flex; flex-direction:column; gap:18px; }
+
+    /* glass */
+    .glass{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
+      backdrop-filter: blur(6px);
+      border-radius:.75rem;
+    }
+
+    /* sidebar */
+    .sidebar .brand { display:flex; gap:.75rem; align-items:center; margin-bottom:18px; }
+    .sidebar .brand img{ width:44px; height:44px; border-radius:.5rem; }
+    .sidebar nav a { display:flex; gap:.6rem; align-items:center; padding:.5rem .6rem; border-radius:.5rem; color:var(--text-high); text-decoration:none; margin-bottom:.25rem; }
+    .sidebar nav a:hover { background: rgba(255,255,255,0.03); }
+
+    /* topbar */
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px; gap:12px; }
+    .topbar .left { display:flex; gap:12px; align-items:center; }
+    .topbar .search { display:flex; gap:8px; align-items:center; }
+
+    .search-input{ background: rgba(255,255,255,0.03); color:var(--text-high); border:1px solid rgba(255,255,255,0.04); padding:.45rem .6rem; border-radius:.375rem; min-width:320px; }
+    .btn-primary{ background:linear-gradient(90deg,var(--brand),var(--brand-dark)); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+    .btn-accent{ background:linear-gradient(90deg,var(--accent),#7c3aed); color:white; padding:.45rem .7rem; border-radius:.5rem; display:inline-flex; gap:.4rem; align-items:center; }
+
+    /* layout cards + panels */
+    .metrics { display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; }
+    .metrics .card { padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; }
+    .main-grid { display:grid; grid-template-columns: 2fr 1fr; gap:14px; flex:1; min-height:0; } /* min-height:0 to allow internal scroll areas */
+
+    /* table area: internal scrolling only */
+    .grievances-panel { padding:14px; border-radius:12px; display:flex; flex-direction:column; min-height:0; }
+    .filters { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+    /* dark-select / fallback looks */
+    select.dark { background:#07191b; color:var(--text-high); border:1px solid rgba(255,255,255,0.06); padding:.4rem .6rem; border-radius:.375rem; }
+
+    .table-wrapper { overflow:auto; border-radius:8px; background:transparent; flex:1; } /* internal scroll only */
+    table { width:100%; border-collapse:collapse; }
+    thead th{ color:var(--text-muted); font-size:.85rem; padding:.75rem; text-align:left; border-bottom:1px solid rgba(255,255,255,0.04); position:sticky; top:0; background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.01)); }
+    tbody td{ padding:.6rem; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; }
+
+    /* analytics panel */
+    .analytics-panel { padding:14px; border-radius:12px; display:flex; flex-direction:column; gap:12px; min-height:0; }
+    .analytics-panel .chart-wrap { flex:1; min-height:160px; display:flex; align-items:center; justify-content:center; }
+
+    /* compact UI */
+    .muted { color:var(--text-muted); font-size:.9rem; }
+    .text-high { color:var(--text-high); }
+
+    /* custom select components (to avoid native white popup) */
+    .cs-wrapper { display:inline-block; position:relative; min-width:140px; }
+    .cs-btn { display:flex; align-items:center; justify-content:space-between; gap:.5rem; padding:.4rem .65rem; border-radius:.35rem; background:linear-gradient(180deg,#07191b,#052225); color:var(--text-high); border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
+    .cs-list { position:absolute; left:0; right:0; margin-top:.3rem; max-height:260px; overflow:auto; background:#07191b; border-radius:.5rem; border:1px solid rgba(255,255,255,0.06); z-index:1400; box-shadow:0 8px 32px rgba(0,0,0,0.6); }
+    .cs-item { padding:.45rem .7rem; cursor:pointer; color:var(--text-high); }
+    .cs-item:hover, .cs-item[aria-selected="true"] { background: rgba(255,255,255,0.03); }
+
+    /* small screens: collapse sidebar */
+    @media(max-width:1024px){
+      aside.sidebar { display:none; }
+      .app { padding-left:0; }
+      main.content { padding:12px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass" role="navigation" aria-label="Sidebar">
+    <div class="brand">
+      <img src="{% static 'images/favicon.ico' %}" alt="logo">
+      <div>
+        <div style="font-weight:700;">Grievance Admin</div>
+        <div class="muted" style="font-size:.8rem;">Control center</div>
+      </div>
+    </div>
+
+    <nav>
+    <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a>
+    <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a>
+    <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a>
+    <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i> Users</a>
+    <a href="{% url 'adminpanel:categories' %}"><i data-lucide="tag" class="w-4 h-4"></i> Categories</a>
+    <!-- NEW -->
+    <a href="{% url 'adminpanel:settings' %}"><i data-lucide="sliders" class="w-4 h-4"></i> Settings</a>
+  </nav>
+
+    <div style="margin-top:18px;font-size:.85rem;" class="muted">
+      <div>Logged in as</div>
+      <div style="font-weight:600;">{% if request.user.is_authenticated %}{{ request.user.username }}{% else %}Guest{% endif %}</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+    <!-- TOPBAR -->
+    <div class="topbar glass">
+      <div class="left">
+        <button id="mobileToggle" class="btn-accent" style="display:none;"><i data-lucide="menu"></i></button>
+        <div style="font-size:1.15rem;font-weight:600;">Dashboard</div>
+
+        <div class="search" style="margin-left:12px;">
+          <input id="searchTop" class="search-input" placeholder="Search grievances or users..." aria-label="Search"/>
+          <button id="searchBtn" class="btn-primary">Search</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button id="exportBtn" class="btn-accent"><i data-lucide="download"></i> Export</button>
+        <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="btn-primary">Sign out</button></form>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics" aria-hidden="false">
+      <div class="card glass">
+        <div>
+          <div class="muted">Total grievances</div>
+          <div id="card-total" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">All time</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="list" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Open</div>
+          <div id="card-open" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">New / In progress</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="clock" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Resolved</div>
+          <div id="card-resolved" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">Completed</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+      </div>
+
+      <div class="card glass">
+        <div>
+          <div class="muted">Avg resolution (days)</div>
+          <div id="card-sla" style="font-size:1.6rem;font-weight:700;">—</div>
+          <div class="muted" style="font-size:.8rem;">SLA</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);padding:10px;border-radius:8px;"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+      <!-- LEFT: Grievance list (internal scroll) -->
+      <section class="grievances-panel glass" aria-labelledby="grievance-heading">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="filters" aria-hidden="false">
+              <!-- Native selects are present but will be converted to custom dark selects by converter script -->
+              <select id="filter-status" class="dark" aria-label="Filter status">
+                <option value="">All status</option>
+                <option value="new">New</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="escalated">Escalated</option>
+              </select>
+
+              <select id="filter-category" class="dark" aria-label="Filter category">
+                <option value="">All categories</option>
+              </select>
+
+              <select id="page-size" class="dark" aria-label="Page size">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+              </select>
+
+              <button id="applyFilters" class="btn-primary">Apply</button>
+            </div>
+          </div>
+
+          <div class="muted">Showing <span id="page-info">Page 1</span></div>
+        </div>
+
+        <div class="table-wrapper" role="region" aria-live="polite" tabindex="0">
+          <table role="table" aria-label="Grievances">
+            <thead>
+              <tr>
+                <th>ID</th><th>Title</th><th>User</th><th>Category</th><th>Status</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="grievanceTable">
+              <tr><td colspan="6" style="padding:28px;text-align:center;color:var(--text-muted);">Loading grievances…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;">
+          <div class="muted">Total: <span id="total-count">—</span></div>
+          <div style="display:flex;gap:8px;">
+            <button id="prevPage" class="btn-accent">Prev</button>
+            <button id="nextPage" class="btn-accent">Next</button>
+            <button id="exportCsv" class="btn-primary">Export CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Analytics (internal small scroll if needed) -->
+      <aside class="analytics-panel glass" aria-labelledby="analytics-heading">
+        <h3 id="analytics-heading" style="margin:0;font-weight:600;">Analytics</h3>
+
+        <div class="chart-wrap" style="min-height:180px;">
+          <canvas id="statusChart" height="160"></canvas>
+        </div>
+
+        <div>
+          <div class="muted">Top categories</div>
+          <ul id="topCategories" style="margin-top:6px;max-height:120px;overflow:auto;padding-left:16px;"></ul>
+        </div>
+
+        <div>
+          <div class="muted">Assign officer</div>
+          <select id="officerList" class="dark" style="width:100%;margin-top:6px;">
+            <option value="">Select officer</option>
+          </select>
+          <button id="assignButton" class="btn-accent" style="margin-top:8px;width:100%;">Assign selected</button>
+        </div>
+
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- Toast UI (for friendly messages) -->
+<div id="toast" aria-live="polite" style="position:fixed;right:18px;bottom:18px;z-index:2000;display:none;">
+  <div id="toast-inner" style="min-width:220px;padding:12px;border-radius:8px;background:#111827;color:#fff;box-shadow:0 8px 24px rgba(2,6,23,0.6);"></div>
+</div>
+
+<!-- Custom select converter + MutationObserver (to avoid native white popup). Converts selects except ones with data-native="1" -->
+<script>
+(function(){
+  function convertSelect(orig) {
+    if (!orig || orig.dataset.native === '1' || orig.dataset.cs === '1') return;
+    orig.dataset.cs = '1';
+    // hide native select
+    orig.style.position = 'absolute';
+    orig.style.left = '-9999px';
+    orig.style.opacity = '0';
+    orig.style.pointerEvents = 'none';
+    orig.tabIndex = -1;
+    orig.setAttribute('aria-hidden','true');
+
+    // prevent native popup
+    const stopNative = e => { e.preventDefault(); e.stopImmediatePropagation && e.stopImmediatePropagation(); return false; };
+    orig.addEventListener('mousedown', stopNative);
+    orig.addEventListener('touchstart', stopNative);
+
+    // build UI
+    const wrap = document.createElement('div'); wrap.className = 'cs-wrapper';
+    const btn = document.createElement('button'); btn.type='button'; btn.className='cs-btn'; btn.setAttribute('aria-haspopup','listbox'); btn.setAttribute('aria-expanded','false');
+    const label = document.createElement('span'); label.className='cs-label'; label.textContent = (orig.options[orig.selectedIndex] || {}).text || '';
+    btn.appendChild(label);
+    const arrow = document.createElement('span'); arrow.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e6eef3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'; btn.appendChild(arrow);
+
+    const list = document.createElement('div'); list.className='cs-list'; list.style.display='none'; list.setAttribute('role','listbox');
+
+    Array.from(orig.options).forEach(opt => {
+      const item = document.createElement('div'); item.className='cs-item'; item.dataset.value = opt.value; item.textContent = opt.text;
+      if (opt.selected) item.setAttribute('aria-selected','true');
+      if (opt.disabled) item.setAttribute('aria-disabled','true');
+      item.addEventListener('click', () => {
+        if (opt.disabled) return;
+        orig.value = item.dataset.value;
+        label.textContent = item.textContent;
+        list.querySelectorAll('.cs-item').forEach(i=>i.removeAttribute('aria-selected'));
+        item.setAttribute('aria-selected','true');
+        list.style.display='none'; btn.setAttribute('aria-expanded','false');
+        orig.dispatchEvent(new Event('change',{bubbles:true}));
+      });
+      list.appendChild(item);
+    });
+    if (!list.children.length) { const e=document.createElement('div'); e.className='cs-item'; e.textContent='No options'; list.appendChild(e); }
+
+    wrap.appendChild(btn); wrap.appendChild(list);
+    orig.parentNode.insertBefore(wrap, orig.nextSibling);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = list.style.display === 'block';
+      document.querySelectorAll('.cs-list').forEach(l => { if (l !== list) l.style.display='none'; if (l.previousSibling) l.previousSibling.setAttribute && l.previousSibling.setAttribute('aria-expanded','false'); });
+      if (open) { list.style.display='none'; btn.setAttribute('aria-expanded','false'); } else { list.style.display='block'; btn.setAttribute('aria-expanded','true'); const sel=list.querySelector('.cs-item[aria-selected="true"]')||list.querySelector('.cs-item'); if(sel) sel.scrollIntoView({block:'nearest'}); }
+    });
+
+    document.addEventListener('click', (ev) => { if (!wrap.contains(ev.target)) { list.style.display='none'; btn.setAttribute('aria-expanded','false'); } });
+
+    orig.addEventListener('change', () => {
+      const v = orig.value;
+      const it = list.querySelector('.cs-item[data-value="'+String(v).replace(/"/g,'\\"')+'"]');
+      if (it) { list.querySelectorAll('.cs-item').forEach(i=>i.removeAttribute('aria-selected')); it.setAttribute('aria-selected','true'); label.textContent = it.textContent; }
+    });
+    // mark
+    console.log('[CS] converted select', orig.id || orig.name || orig);
+  }
+
+  function convertAll(){
+    const sels = Array.from(document.querySelectorAll('select')).filter(s=>s.dataset.native!=='1');
+    sels.forEach(convertSelect);
+  }
+  document.addEventListener('DOMContentLoaded', convertAll);
+  window.addEventListener('load', convertAll);
+
+  // Watch for dynamically added selects
+  const mo = new MutationObserver((mutations) => {
+    let found=false;
+    for (const m of mutations) {
+      m.addedNodes && m.addedNodes.forEach(n => {
+        if (n.nodeType===1) {
+          if (n.matches && n.matches('select')) found=true;
+          if (n.querySelector && n.querySelector('select')) found=true;
+        }
+      });
+    }
+    if (found) setTimeout(convertAll, 60);
+  });
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  window.__cs_convertAll = convertAll;
+})();
+</script>
+
+<!-- App JS: fetch analytics, populate grievances table (internal scrolling), CSV export -->
+<script>
+/* small fetch helper with JSON & error handling */
+async function fetchJSON(url, opts={}) {
+  opts.credentials = 'same-origin';
+  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers||{});
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const t = await res.text().catch(()=>null);
+    const e = new Error('HTTP ' + res.status + (t?(' - '+t):''));
+    e.status = res.status; e.body = t;
+    throw e;
+  }
+  return res.json().catch(()=>null);
+}
+
+/* CSRF helper (for future POSTs) */
+function getCookie(name) {
+  let v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+  return v ? decodeURIComponent(v.pop()) : null;
+}
+const CSRF_TOKEN = getCookie('csrftoken');
+
+/* toast helper */
+function showToast(message, type='info', timeout=5000) {
+  const toast = document.getElementById('toast');
+  const inner = document.getElementById('toast-inner');
+  inner.textContent = message;
+  inner.style.background = (type==='error') ? '#9b1c1c' : ((type==='success') ? '#065f46' : '#111827');
+  toast.style.display = 'block';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>{ toast.style.display='none'; }, timeout);
+}
+
+/* download blob helper */
+function downloadBlob(blob, filename='export.csv') {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/* analytics loader */
+async function loadAnalytics(){
+  const api = '/adminpanel/api/analytics/';
+  try {
+    ['card-total','card-open','card-resolved','card-sla'].forEach(id=>document.getElementById(id).textContent='…');
+    const data = await fetchJSON(api);
+
+    const total = data.total_grievances ?? data.total ?? 0;
+    const by_status = data.by_status || data.byStatus || {};
+    const avg = data.avg_resolution_days ?? data.avg ?? 0;
+    const openCount = (Number(by_status.new||0)+Number(by_status.in_progress||0))||0;
+    const resolvedCount = Number(by_status.resolved||0)||0;
+    document.getElementById('card-total').textContent = total;
+    document.getElementById('card-open').textContent = openCount;
+    document.getElementById('card-resolved').textContent = resolvedCount;
+    document.getElementById('card-sla').textContent = avg;
+
+    // top categories (backend returns by_category)
+    const top = data.by_category || data.top_categories || [];
+    const ul = document.getElementById('topCategories'); ul.innerHTML='';
+    if (Array.isArray(top) && top.length) {
+      top.slice(0,6).forEach(t => {
+        const li=document.createElement('li'); li.textContent = (t.name||t.category||'') + ' — ' + (t.count ?? '');
+        ul.appendChild(li);
+      });
+    } else ul.innerHTML='<li class="muted">No category data</li>';
+
+    const labels = Object.keys(by_status).length ? Object.keys(by_status) : ['No data'];
+    const values = labels.map(k => Number(by_status[k]||0));
+    renderStatusChart(labels, values);
+  } catch (err) {
+    console.error('analytics load failed', err);
+    ['card-total','card-open','card-resolved','card-sla'].forEach(id=>document.getElementById(id).textContent='—');
+    document.getElementById('topCategories').innerHTML = '<li class="muted">Could not load analytics</li>';
+  }
+}
+
+let statusChart = null;
+function renderStatusChart(labels, values){
+  const ctx = document.getElementById('statusChart').getContext('2d');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{ data: values.length?values:[1], backgroundColor: ['rgba(14,165,164,0.9)','rgba(79,70,229,0.9)','rgba(34,197,94,0.9)','rgba(249,115,22,0.9)','rgba(239,68,68,0.9)'] }]
+    },
+    options: { plugins: { legend: { labels: { color: 'rgba(230,238,243,0.9)' } } } }
+  });
+}
+
+/* load categories for filter */
+async function loadCategories() {
+  try {
+    const cats = await fetchJSON('/adminpanel/api/categories/');
+    const sel = document.getElementById('filter-category');
+    sel.innerHTML = '<option value="">All categories</option>';
+    if (Array.isArray(cats)) {
+      cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id || c.name;
+        opt.textContent = c.name || c;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    console.warn('Could not load categories', err);
+    const sel = document.getElementById('filter-category');
+    sel.innerHTML = '<option value="">(categories unavailable)</option>';
+  }
+}
+
+/* load officers for assign dropdown */
+async function loadOfficersList() {
+  try {
+    const resp = await fetchJSON('/adminpanel/api/user-status/');
+    const officers = resp.officers || [];
+    const sel = document.getElementById('officerList');
+    sel.innerHTML = '<option value="">Select officer</option>';
+    officers.forEach(o => {
+      const opt=document.createElement('option'); opt.value=o.id; opt.textContent=o.full_name || o.username || (o.name || o.email || opt.value); sel.appendChild(opt);
+    });
+  } catch (err) {
+    console.warn('Could not load officers', err);
+    document.getElementById('officerList').innerHTML = '<option value="">(no officers)</option>';
+  }
+}
+
+/* grievances loader using limit & offset */
+let currentPage = 1;
+async function loadGrievances(page=1){
+  const api = '/adminpanel/api/grievances/';
+  const status = document.getElementById('filter-status').value || '';
+  const category = document.getElementById('filter-category').value || '';
+  const pageSize = parseInt(document.getElementById('page-size').value || '25', 10) || 25;
+
+  const offset = (Math.max(1, page) - 1) * pageSize;
+  const params = new URLSearchParams({ limit: pageSize, offset: offset });
+  if (status) params.set('status', status);
+  if (category) params.set('category', category);
+
+  const tbody = document.getElementById('grievanceTable');
+  tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">Loading…</td></tr>`;
+  try {
+    const payload = await fetchJSON(api + '?' + params.toString());
+    const rows = payload.results || payload.data || payload || [];
+    const total = payload.count ?? payload.total ?? rows.length;
+    document.getElementById('total-count').textContent = total;
+    tbody.innerHTML = '';
+    if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">No grievances found.</td></tr>`; return; }
+    rows.forEach(r => {
+      const tr=document.createElement('tr');
+      const userVal = (r.user && (r.user.username || r.user)) || (r.submitted_by && r.submitted_by.username) || (r.user_name||'');
+      const catVal = (r.category && (r.category.name || r.category)) || r.category || '';
+      tr.innerHTML = `<td>${r.id ?? ''}</td>
+        <td>${escapeHtml(r.title ?? r.subject ?? '')}</td>
+        <td>${escapeHtml(userVal)}</td>
+        <td>${escapeHtml(catVal)}</td>
+        <td>${escapeHtml(r.status ?? '')}</td>
+        <td><a class="btn-accent" href="/adminpanel/grievances/${r.id}/">View</a></td>`;
+      tbody.appendChild(tr);
+    });
+
+    currentPage = page;
+    const pageInfo = document.getElementById('page-info');
+    pageInfo.textContent = `Page ${page} — showing ${Math.min(pageSize, rows.length)} of ${total}`;
+  } catch (err) {
+    console.error('grievances load failed', err);
+    tbody.innerHTML = `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--text-muted);">Failed to load grievances.</td></tr>`;
+  }
+}
+
+/* escape helper */
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Export CSV handler (downloads CSV) */
+async function exportGrievancesCSV() {
+  const status = document.getElementById('filter-status').value || '';
+  const category = document.getElementById('filter-category').value || '';
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (category) params.set('category', category);
+  params.set('export_all', '1'); // request server to export all matches
+
+  const url = '/adminpanel/api/export/grievances/?' + params.toString();
+
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
+
+    if (!res.ok) {
+      const ct = res.headers.get('Content-Type') || '';
+      if (ct.includes('application/json')) {
+        const j = await res.json().catch(()=>null);
+        const msg = j && (j.detail || j.error || j.message) ? (j.detail || j.error || j.message) : `Server returned ${res.status}`;
+        showToast(msg, 'error');
+      } else {
+        const txt = await res.text().catch(()=>null);
+        showToast(txt || `Export failed (HTTP ${res.status})`, 'error');
+      }
+      return;
+    }
+
+    const disp = res.headers.get('Content-Disposition') || '';
+    let filename = 'grievances_export.csv';
+    const m = /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/.exec(disp);
+    if (m && m[1]) filename = decodeURIComponent(m[1]);
+
+    const blob = await res.blob();
+    downloadBlob(blob, filename);
+    showToast('Export started — file downloaded', 'success', 4000);
+  } catch (err) {
+    console.error('Export failed', err);
+    showToast('Export failed: ' + (err.message || 'Network error'), 'error');
+  }
+}
+
+/* wire actions */
+document.addEventListener('DOMContentLoaded', function(){
+  loadAnalytics();
+  loadCategories();
+  loadOfficersList();
+  loadGrievances(1);
+
+  document.getElementById('applyFilters').addEventListener('click', (e)=>{ e.preventDefault(); loadGrievances(1); });
+  document.getElementById('searchBtn').addEventListener('click', (e)=>{ e.preventDefault(); loadGrievances(1); });
+
+  document.getElementById('prevPage').addEventListener('click', (e) => { e.preventDefault(); if (currentPage>1) loadGrievances(currentPage-1); });
+  document.getElementById('nextPage').addEventListener('click', (e) => { e.preventDefault(); loadGrievances(currentPage+1); });
+
+  document.getElementById('exportCsv').addEventListener('click', (e)=>{ e.preventDefault(); exportGrievancesCSV(); });
+  document.getElementById('exportBtn').addEventListener('click', (e)=>{ e.preventDefault(); exportGrievancesCSV(); });
+});
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
+

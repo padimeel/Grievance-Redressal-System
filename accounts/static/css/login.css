@@ -1,0 +1,43 @@
+/* Body gradient animation */
+.animate-gradientBG {
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Wrapper for input with icon */
+.input-icon-wrapper {
+  position: relative;
+}
+
+.input-icon-wrapper svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af; /* gray-400 */
+  pointer-events: none;
+}
+
+.input-with-icon {
+  padding-left: 2.5rem; /* space for icon */
+}
+/* Fix icon vertical alignment */
+.relative svg {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Smooth hover focus */
+input:focus {
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.3);
+}
+
+
+
