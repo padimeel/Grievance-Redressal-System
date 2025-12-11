@@ -95,3 +95,4 @@ register_if_exists("Grievance", GrievanceAdmin)
 register_if_exists("GrievanceRemark", GrievanceRemarkAdmin)
 register_if_exists("Feedback", FeedbackAdmin)
 register_if_exists("ChangeLog", ChangeLogAdmin)
+
