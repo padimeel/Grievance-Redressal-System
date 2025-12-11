@@ -1,0 +1,9 @@
+<!doctype html>
+<html>
+<head><title>Citizen Dashboard</title></head>
+<body>
+  <h1>Citizen Dashboard</h1>
+  <p>Welcome, {{ request.user.get_full_name|default:request.user.username }}</p>
+  <p><a href="{% url 'accounts:logout' %}">Logout</a></p>
+</body>
+</html>

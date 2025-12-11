@@ -1,0 +1,320 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Officers (Refined UI)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+  <style>
+    :root{
+      --bg-1: #071126; /* deep blue */
+      --bg-2: #042333; /* teal indigo */
+      --card: rgba(255,255,255,0.03);
+      --muted: #9fb6c2;
+      --accent: linear-gradient(90deg,#06b6d4,#0ea5a4);
+      --glass-border: rgba(255,255,255,0.06);
+      --success: #10b981;
+      --modal-bg: #021823; /* solid modal background */
+      --input-bg: #062029; /* solid input background */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:radial-gradient(800px 500px at 10% 10%, rgba(14,165,164,0.05), transparent), linear-gradient(180deg,var(--bg-1),var(--bg-2));color:#e6eef3;-webkit-font-smoothing:antialiased}
+
+    /* layout */
+    .app{display:flex;gap:20px;min-height:100vh;padding:28px}
+    .sidebar{width:260px}
+    .main{flex:1;display:flex;flex-direction:column;gap:20px}
+
+    /* sidebar */
+    .sidebar .card{padding:20px;border-radius:14px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.009));box-shadow:0 12px 38px rgba(2,6,23,0.6)}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img{width:48px;height:48px;border-radius:10px}
+    .nav{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+    .nav a{padding:10px 12px;border-radius:10px;color:var(--muted);text-decoration:none;display:flex;align-items:center;gap:10px}
+    .nav a.active{background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));color:#dff7f6}
+
+    /* header */
+    header.top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .searchbar{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:12px;display:flex;align-items:center;gap:10px;min-width:360px}
+    .searchbar input{background:transparent;border:0;outline:none;color:inherit;width:100%}
+
+    /* stats */
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .stat-card{padding:16px;border-radius:12px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008));display:flex;justify-content:space-between;align-items:center}
+    .stat-left{display:flex;flex-direction:column}
+    .stat-value{font-size:1.25rem;font-weight:700}
+    .stat-label{color:var(--muted);font-size:0.9rem}
+
+    /* table */
+    .table-card{padding:12px;border-radius:12px;border:1px solid var(--glass-border);background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.006));box-shadow:0 8px 24px rgba(2,6,23,0.45)}
+    table{width:100%;border-collapse:collapse}
+    thead th{color:var(--muted);text-align:left;padding:12px 10px;font-size:0.9rem}
+    tbody tr{transition:transform .12s ease, background .12s ease}
+    tbody tr:hover{transform:translateY(-2px)}
+    .row{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));border:1px solid rgba(255,255,255,0.02);border-radius:10px;margin-bottom:10px}
+    td{padding:12px 10px;vertical-align:middle}
+    .avatar{width:44px;height:44px;border-radius:10px;background:linear-gradient(90deg,#0ea5a4,#06b6d4);display:flex;align-items:center;justify-content:center;font-weight:700;color:#022426}
+    .dept-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted);font-size:0.85rem}
+    /* actions */
+    /* general button used across UI */
+    .btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.04);color:var(--text, #e6eef3);cursor:pointer;transition:all .12s ease}
+    .btn:hover{transform:translateY(-2px);background:linear-gradient(90deg,#0ea5a4,#06b6d4);color:#012a28}
+    .btn.primary{background:var(--accent);color:#042028;border:none}
+
+    /* action buttons inside table rows */
+    .actions button{margin-left:8px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.03);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .actions button:hover{background:linear-gradient(90deg,#0ea5a4,#06b6d4);color:#042028}
+    .actions button.primary{background:var(--accent);color:#042028}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:60}
+    .modal.show{display:flex}
+    .modal .card{width:100%;max-width:760px;background:var(--modal-bg);border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 20px 50px rgba(2,6,23,0.7);padding:20px}
+
+    /* inputs (solid, not transparent) */
+    input[type="text"], input[type="email"], textarea{background:var(--input-bg);border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:10px;color:inherit;width:100%;outline:none}
+
+    /* footer / pagination */
+    .pager{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+    .pager .controls{display:flex;gap:8px}
+
+    @media(max-width:1100px){.stats{grid-template-columns:repeat(1,1fr)}.searchbar{min-width:220px}}
+    @media(max-width:760px){.app{flex-direction:column;padding:16px}.sidebar{width:100%}.main{gap:12px}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="card">
+      <div class="brand">
+        <img src="{% static 'images/favicon.ico' %}" alt="logo" />
+        <div>
+          <div style="font-weight:800;font-size:1.05rem">Grievance Admin</div>
+          <div style="color:var(--muted);font-size:.85rem">Kerala • Control Center</div>
+        </div>
+      </div>
+      <nav class="nav" style="margin-top:16px">
+        <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a>
+        <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a>
+        <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a>
+        <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i> Users</a>
+        <a href="{% url 'adminpanel:categories' %}" class="active"><i data-lucide="user-check" class="w-4 h-4"></i> Officers</a>
+      </nav>
+
+      <div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.02);padding-top:14px;color:var(--muted);font-size:.95rem">
+        <div>Signed in as</div>
+        <div style="font-weight:700;margin-top:4px">{{ request.user.username }}</div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div>
+        <div style="font-size:1.2rem;font-weight:800">Officers</div>
+        <div style="color:var(--muted);margin-top:4px">Manage officers, departments and usage — improved visual style</div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center">
+        <div class="searchbar">
+          <i data-lucide="search" class="w-4 h-4" style="color:var(--muted)"></i>
+          <input id="searchBox" placeholder="Search name, department..." />
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button id="filterBtn" class="btn" title="Filters"><i data-lucide="funnel" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+        <button id="addBtn" class="btn primary" style="padding:10px 14px;border-radius:12px;background:var(--accent);color:#042028;font-weight:700;display:flex;align-items:center;gap:8px"><i data-lucide="user-plus" class="w-4 h-4"></i> Add Officer</button>
+
+        <form method="post" action="{% url 'accounts:logout' %}" style="display:inline"><input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}" /><button class="btn" style="background:rgba(255,255,255,0.02);padding:8px 12px;border-radius:10px">Sign out</button></form>
+      </div>
+    </header>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Total officers</div>
+          <div id="totalCategories" class="stat-value">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="users" class="w-5 h-5"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Active departments</div>
+          <div id="deptCount" class="stat-value">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-left">
+          <div class="stat-label">Avg. usage</div>
+          <div id="avgUsage" class="stat-value">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);padding:10px;border-radius:10px"><i data-lucide="activity" class="w-5 h-5"></i></div>
+      </div>
+    </section>
+
+    <div class="table-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="color:var(--muted)">Showing <strong id="showingInfo">—</strong></div>
+        <div class="controls" style="display:flex;gap:8px;align-items:center">
+          <button id="prevPage" class="btn">Prev</button>
+          <button id="nextPage" class="btn">Next</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto">
+        <table aria-live="polite">
+          <thead>
+            <tr>
+              <th style="width:60px">ID</th>
+              <th>Name</th>
+              <th style="width:230px">Department</th>
+              <th style="width:120px">Usage</th>
+              <th style="width:150px;text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="categoryBody">
+            <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Loading officers…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div style="color:var(--muted);font-size:.9rem">Tip: Use the action buttons to edit or delete</div>
+        <div class="controls">
+          <button id="prevPageBottom" class="btn">◀</button>
+          <button id="nextPageBottom" class="btn">▶</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL: Add / Edit Officer -->
+<div id="catModal" class="modal"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="font-weight:800" id="catModalTitle">Add Officer</div>
+    <button id="catClose" class="btn">✕</button>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div style="flex:1 1 320px">
+      <label class="muted small">Name</label>
+      <input id="catName" type="text" />
+      <div id="catNameErr" style="color:#ff9aa2;display:none;margin-top:6px;font-size:.9rem"></div>
+    </div>
+    <div style="flex:1 1 220px">
+      <label class="muted small">Department</label>
+      <input id="catDept" type="text" />
+      <div id="catDeptErr" style="color:#ff9aa2;display:none;margin-top:6px;font-size:.9rem"></div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
+    <button id="catCancel" class="btn">Cancel</button>
+    <button id="catSave" class="btn primary">Save</button>
+  </div>
+</div></div>
+
+<!-- MODAL: Delete -->
+<div id="delModal" class="modal"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Delete Officer</strong><button id="delClose" class="btn">✕</button></div>
+  <div style="color:var(--muted);margin-bottom:12px">Are you sure you want to delete <strong id="delName">this officer</strong>?</div>
+  <div style="display:flex;justify-content:flex-end;gap:10px">
+    <button id="delCancel" class="btn">Cancel</button>
+    <button id="delConfirm" class="btn" style="background:#dc2626;color:#fff;border-radius:10px;padding:8px 12px">Delete</button>
+  </div>
+</div></div>
+
+<script>
+const API_BASE = '/adminpanel/api/categories/';
+let categories = []; let filtered = []; let currentPage = 1; const pageSize = 12; let editingId = null; let deletingId = null;
+
+function getCookie(name){const v=document.cookie.match('(^|;)\s*'+name+'\s*=\s*([^;]+)');return v?v.pop():''}
+async function apiFetch(url, opts={}){opts.credentials='same-origin';opts.headers=Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRFToken':getCookie('csrftoken')}, opts.headers||{});const res = await fetch(url, opts); if(!res.ok){ const body = await res.clone().json().catch(()=>null); const err = new Error('HTTP '+res.status); err.status=res.status; err.body=body; throw err } return res.status===204?null:await res.json().catch(()=>null)}
+
+function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function renderValue(v){ if(v===null||v===undefined||v==='') return '-'; if(typeof v==='object'){ if(v.name) return escapeHtml(v.name); if(v.title) return escapeHtml(v.title); try{ const s=JSON.stringify(v); return escapeHtml(s.length>80? s.slice(0,77)+'...':s)}catch(e){return '-'} } return escapeHtml(v) }
+
+function renderTable(){ const tbody = document.getElementById('categoryBody'); tbody.innerHTML = '';
+  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">No officers found.</td></tr>'; document.getElementById('showingInfo').textContent='0'; return }
+  const start = (currentPage-1)*pageSize; const end = start + pageSize; filtered.slice(start,end).forEach(c=>{
+    const tr = document.createElement('tr'); tr.className = 'row';
+    tr.innerHTML = `
+      <td style="width:60px">${renderValue(c.id)}</td>
+      <td>
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="avatar">${(c.name && typeof c.name==='string')?c.name.charAt(0).toUpperCase():'-'}</div>
+          <div>
+            <div style="font-weight:700">${renderValue(c.name)}</div>
+            <div style="color:var(--muted);font-size:13px">ID: ${renderValue(c.id)}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="dept-badge">${renderValue(c.department)}</span></td>
+      <td>${renderValue(c.count)}</td>
+      <td style="text-align:right" class="actions">
+        <button data-edit="${escapeHtml(c.id)}" title="Edit"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+        <button data-del="${escapeHtml(c.id)}" title="Delete"><i data-lucide="trash" class="w-4 h-4" style="color:#ff9aa2"></i></button>
+      </td>
+    `;
+    // removed row click — actions are done via buttons only
+    tbody.appendChild(tr);
+  });
+  document.getElementById('showingInfo').textContent = `${Math.min(start+1,filtered.length)}-${Math.min(end,filtered.length)} of ${filtered.length}`;
+  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click',onEditClick));
+  Array.from(document.querySelectorAll('button[data-del]')).forEach(b=>b.addEventListener('click',onDelClick));
+}
+
+async function loadCategories(){ try{
+    const data = await apiFetch(API_BASE);
+    console.log('API response:', data);
+    categories = Array.isArray(data)?data:[]; filtered = categories.slice(); currentPage = 1; renderTable();
+    document.getElementById('totalCategories').textContent = String(categories.length || 0);
+    document.getElementById('deptCount').textContent = String(new Set(categories.map(c=> typeof c.department==='object'?c.department.name:(c.department||'')).filter(Boolean)).size || '—');
+    const avg = categories.reduce((s,c)=>s+(c.count||0),0)/(categories.length||1); document.getElementById('avgUsage').textContent = categories.length?Math.round(avg*10)/10:'—';
+  } catch(e){ console.error(e); document.getElementById('categoryBody').innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Failed to load officers.</td></tr>'; document.getElementById('totalCategories').textContent='—' }
+}
+
+// Modals
+function showModal(id){document.getElementById(id).classList.add('show')}
+function hideModal(id){document.getElementById(id).classList.remove('show')}
+function openEdit(item){ document.getElementById('catModalTitle').textContent = 'Edit Officer'; document.getElementById('catName').value = (item && item.name && typeof item.name === 'object') ? (item.name.name || '') : (item && item.name ? item.name : ''); document.getElementById('catDept').value = (item && item.department && typeof item.department === 'object') ? (item.department.name || '') : (item && item.department ? item.department : ''); showModal('catModal') }
+
+// events
+['catClose','catCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('catModal')));
+document.getElementById('addBtn').addEventListener('click',()=>{ editingId = null; document.getElementById('catModalTitle').textContent = 'Add Officer'; document.getElementById('catName').value=''; document.getElementById('catDept').value=''; showModal('catModal'); });
+
+document.getElementById('catSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('catName').value.trim(); const dept = document.getElementById('catDept').value.trim();
+  if(!name){ document.getElementById('catNameErr').style.display='block'; document.getElementById('catNameErr').textContent='Name required'; return }
+  try{
+    if(editingId){ await apiFetch(API_BASE+editingId+'/',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
+    else{ await apiFetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
+    await loadCategories(); hideModal('catModal');
+  }catch(err){ console.error(err); alert('Save failed') }
+});
+
+function onEditClick(e){ e.stopPropagation(); const id = e.currentTarget.getAttribute('data-edit'); if(!id) return; editingId = id; const item = categories.find(x=>String(x.id)===String(id)); openEdit(item); }
+function onDelClick(e){ e.stopPropagation(); deletingId = e.currentTarget.getAttribute('data-del'); document.getElementById('delName').textContent = categories.find(c=>String(c.id)===String(deletingId))?.name || ''; showModal('delModal'); }
+
+['delClose','delCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('delModal')));
+document.getElementById('delConfirm').addEventListener('click', async ()=>{ if(!deletingId) return; const btn = document.getElementById('delConfirm'); btn.disabled=true; btn.textContent='Deleting...'; try{ await apiFetch(API_BASE+deletingId+'/',{method:'DELETE'}); await loadCategories(); hideModal('delModal'); deletingId=null } catch(err){ console.error(err); alert('Delete failed') } finally{ btn.disabled=false; btn.textContent='Delete' } });
+
+// pagination & search
+[ 'prevPage','prevPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ if(currentPage>1){ currentPage--; renderTable() } }) });
+[ 'nextPage','nextPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ const max=Math.ceil(filtered.length/pageSize); if(currentPage<max){ currentPage++; renderTable() } }) });
+
+document.getElementById('searchBox').addEventListener('input', e=>{ const q=(e.target.value||'').trim().toLowerCase(); filtered = q? categories.filter(c=>{ const name = (typeof c.name==='object'?c.name.name:(c.name||'')); const dept = (typeof c.department==='object'?c.department.name:(c.department||'')); return (String(name)+' '+String(dept)).toLowerCase().includes(q) }) : categories.slice(); currentPage=1; renderTable(); });
+
+loadCategories();
+</script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
+

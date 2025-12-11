@@ -1,0 +1,258 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Settings</title>
+
+  <!-- re-use same icon/chart libs as dashboard -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <style>
+    :root{
+      --bg-start:#071124; --bg-end:#072f2e;
+      --brand:#0ea5a4; --brand-dark:#0b8f8b;
+      --accent:#4f46e5;
+      --text-high:#e6eef3; --text-muted:#a8bbc6;
+    }
+    html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto;}
+    body{
+      background:linear-gradient(180deg,var(--bg-start),var(--bg-end));
+      color:var(--text-high);
+      overflow:hidden;
+    }
+
+    .app { display:flex; height:100vh; width:100vw; }
+    aside.sidebar { width:280px; padding:28px; box-sizing:border-box; }
+    main.content { flex:1; padding:20px 28px; box-sizing:border-box; display:flex; flex-direction:column; gap:18px; overflow:auto; }
+
+    .glass{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
+      backdrop-filter: blur(6px);
+      border-radius:.75rem;
+    }
+
+    .sidebar .brand { display:flex; gap:.75rem; align-items:center; margin-bottom:18px; }
+    .sidebar .brand img{ width:44px; height:44px; border-radius:.5rem; }
+    .sidebar nav a { display:flex; gap:.6rem; align-items:center; padding:.5rem .6rem; border-radius:.5rem; color:var(--text-high); text-decoration:none; margin-bottom:.25rem; }
+    .sidebar nav a:hover { background: rgba(255,255,255,0.03); }
+    .sidebar .muted { color:var(--text-muted); font-size:.85rem; margin-top:18px; }
+
+    .page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .page-head h1 { margin:0; font-size:1.4rem; font-weight:700; }
+    .page-head .muted { color:var(--text-muted); font-size:.94rem; }
+
+    .layout { display:grid; grid-template-columns: 2fr 1fr; gap:18px; align-items:start; min-height:0; }
+    .card { padding:16px; border-radius:12px; }
+
+    form.settings-form .row { display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+    .row .label { width:220px; min-width:160px; color:var(--text-muted); font-size:.95rem; }
+    .row .control { flex:1; }
+
+    input[type="text"], input[type="email"], input[type="number"], select {
+      background: rgba(255,255,255,0.02);
+      color:var(--text-high);
+      border:1px solid rgba(255,255,255,0.04);
+      padding:.5rem .6rem;
+      border-radius:.375rem;
+      min-width:180px;
+    }
+
+    .switch { display:inline-flex; align-items:center; gap:.6rem; }
+    .btn { padding:.45rem .7rem; border-radius:.5rem; cursor:pointer; color:white; border:none; }
+    .btn-primary{ background:linear-gradient(90deg,var(--brand),var(--brand-dark)); }
+    .btn-accent{ background:linear-gradient(90deg,var(--accent),#7c3aed); }
+    .btn-outline { background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--text-high); }
+
+    .danger { color:#ffb4b4; background: rgba(255,0,0,0.04); padding:.6rem; border-radius:.5rem; }
+
+    .muted { color:var(--text-muted); }
+    .small { font-size:.85rem; color:var(--text-muted); }
+
+    /* responsive */
+    @media(max-width:1024px){
+      aside.sidebar { display:none; }
+      .layout { grid-template-columns: 1fr; }
+      main.content { padding:12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR (same as dashboard) -->
+  <aside class="sidebar glass" role="navigation" aria-label="Sidebar">
+    <div class="brand">
+      <img src="{% static 'images/favicon.ico' %}" alt="logo">
+      <div>
+        <div style="font-weight:700;">Grievance Admin</div>
+        <div class="small">Control center</div>
+      </div>
+    </div>
+
+    <nav>
+      <a href="{% url 'adminpanel:dashboard' %}"><i data-lucide="home" class="w-4 h-4"></i>&nbsp;&nbsp;Dashboard</a>
+      <a href="{% url 'adminpanel:grievances_list' %}"><i data-lucide="file-text" class="w-4 h-4"></i>&nbsp;&nbsp;Grievances</a>
+      <a href="{% url 'adminpanel:analytics' %}"><i data-lucide="bar-chart-2" class="w-4 h-4"></i>&nbsp;&nbsp;Analytics</a>
+      <a href="{% url 'adminpanel:users' %}"><i data-lucide="users" class="w-4 h-4"></i>&nbsp;&nbsp;Users</a>
+      <a href="{% url 'adminpanel:categories' %}"><i data-lucide="tag" class="w-4 h-4"></i>&nbsp;&nbsp;Categories</a>
+      <a href="{% url 'adminpanel:settings' %}" style="font-weight:700;"><i data-lucide="sliders" class="w-4 h-4"></i>&nbsp;&nbsp;Settings</a>
+    </nav>
+
+    <div class="muted">
+      <div>Logged in as</div>
+      <div style="font-weight:600;">{{ request.user.username }}</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content">
+    <div class="page-head">
+      <div>
+        <h1>Settings</h1>
+        <div class="muted">Configure defaults, notifications and operational options</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;">
+        <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button type="submit" class="btn btn-outline">Sign out</button></form>
+      </div>
+    </div>
+
+    {% if messages %}
+      <div class="card glass">
+        {% for msg in messages %}
+          <div style="margin-bottom:6px;" class="{% if msg.tags == 'success' %}small{% endif %}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="layout">
+      <!-- LEFT: settings form -->
+      <section class="card glass">
+        <form method="post" class="settings-form" novalidate>
+          {% csrf_token %}
+          <h2 style="margin-top:0;margin-bottom:6px;">General</h2>
+          <div class="small muted" style="margin-bottom:12px;">Core defaults used across admin panels and exports.</div>
+
+          <div class="row">
+            <div class="label">Default page size</div>
+            <div class="control">
+              {{ form.default_page_size }}
+              {% if form.default_page_size.errors %}<div class="small" style="color:#fda4af;">{{ form.default_page_size.errors }}</div>{% endif %}
+              <div class="small muted">Pagination size for lists (5–200).</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="label">Default SLA (days)</div>
+            <div class="control">
+              {{ form.sla_days }}
+              {% if form.sla_days.errors %}<div class="small" style="color:#fda4af;">{{ form.sla_days.errors }}</div>{% endif %}
+              <div class="small muted">Used for SLA metrics on analytics.</div>
+            </div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,0.04);margin:14px 0;">
+
+          <h3 style="margin:0 0 8px 0;">Notifications</h3>
+          <div class="small muted" style="margin-bottom:10px;">Configure email / system notifications for citizens & officers.</div>
+
+          <div class="row">
+            <div class="label">Enable notifications</div>
+            <div class="control">
+              <label class="switch">
+                {{ form.notifications_enabled }} <span class="small muted"> Enable automatic emails/SMS</span>
+              </label>
+              {% if form.notifications_enabled.errors %}<div class="small" style="color:#fda4af;">{{ form.notifications_enabled.errors }}</div>{% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="label">Notification email</div>
+            <div class="control">
+              {{ form.notification_email }}
+              {% if form.notification_email.errors %}<div class="small" style="color:#fda4af;">{{ form.notification_email.errors }}</div>{% endif %}
+              <div class="small muted">Sender address used for system emails (no-reply@example.com recommended).</div>
+              <div style="margin-top:8px;">
+                <button type="button" id="send-test" class="btn btn-outline">Send test email</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:18px;display:flex;gap:10px;">
+            <button type="submit" class="btn btn-primary">Save settings</button>
+            <button type="button" id="reset-session" class="btn btn-accent">Reset (session)</button>
+            <a href="{% url 'adminpanel:dashboard' %}" class="btn btn-outline" style="align-self:center;">Cancel</a>
+          </div>
+        </form>
+      </section>
+
+      <!-- RIGHT: info / danger zone -->
+      <aside class="card glass" style="min-height:200px;">
+        <h3 style="margin:0 0 8px 0;">Info & Danger zone</h3>
+        <div class="small muted">Session-backed settings are active. For production, create a persistent SiteSettings model.</div>
+
+        <div style="margin-top:12px;">
+          <div class="small muted">Version</div>
+          <div style="font-weight:600;">Phase-1</div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="small muted">Last modified</div>
+          <div class="small muted">—</div>
+        </div>
+
+        <div style="margin-top:16px;">
+          <div class="danger">Danger zone</div>
+          <div class="small muted" style="margin-top:6px;">Reset session settings or clear cached analytics. Use with caution.</div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button id="confirm-reset" class="btn btn-outline">Clear session</button>
+            <button id="clear-cache" class="btn btn-outline">Clear cache (demo)</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // lucide icons
+  lucide.createIcons();
+
+  // small client demos
+  document.addEventListener('DOMContentLoaded', function(){
+    const sendBtn = document.getElementById('send-test');
+    if (sendBtn) sendBtn.addEventListener('click', function(){ sendBtn.disabled=true; sendBtn.textContent='Sending…'; setTimeout(()=>{ sendBtn.disabled=false; sendBtn.textContent='Send test email'; alert('Test email sent (demo)'); }, 900); });
+
+    const resetSession = document.getElementById('reset-session');
+    if (resetSession) resetSession.addEventListener('click', function(){
+      if (!confirm('Reset session-stored settings to defaults?')) return;
+      // quick demo: submit a small form to server OR instruct admin to clear session
+      alert('Session settings reset (demo). Implement server endpoint to reset persistent settings.');
+    });
+
+    const confirmReset = document.getElementById('confirm-reset');
+    if (confirmReset) confirmReset.addEventListener('click', function(){
+      if (!confirm('Clear all session settings?')) return;
+      alert('Session cleared (demo). Implement backend endpoint to perform clear.');
+    });
+
+    const clearCache = document.getElementById('clear-cache');
+    if (clearCache) clearCache.addEventListener('click', function(){ alert('Cache cleared (demo). Implement server-side cache clear.'); });
+  });
+</script>
+
+</body>
+</html>
+
+
+
+
+
+

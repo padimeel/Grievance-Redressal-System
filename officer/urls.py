@@ -1,11 +1,9 @@
-﻿from django.urls import path
-from django.http import JsonResponse
+# officer/urls.py
+from django.urls import path
+from .views import OfficerDashboardView
 
-def ping(request):
-    return JsonResponse({"status": "officer OK"})
+app_name = 'officer'
 
 urlpatterns = [
-    path('', ping, name='officer-root'),
-
-
+    path('dashboard/', OfficerDashboardView.as_view(), name='dashboard'),
 ]

@@ -1,89 +1,58 @@
-# # citizen/serializers.py (append at end)
-
-# from django.contrib.auth.models import User
-# from rest_framework.validators import UniqueValidator
-# from rest_framework import serializers
-
-# from .models import Category, Grievance, Feedback
-# from django.contrib.auth.models import User
-# from rest_framework.validators import UniqueValidator
-
-# class CategorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Category
-#         fields = ['id', 'name']
-
-
-# class GrievanceSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Grievance
-#         fields = '__all__'
-
-# class RegisterSerializer(serializers.ModelSerializer):
-#     email = serializers.EmailField(
-#         required=False,
-#         validators=[UniqueValidator(queryset=User.objects.all())]
-#     )
-#     password = serializers.CharField(write_only=True, min_length=8)
-
-#     class Meta:
-#         model = User
-#         fields = ("id", "username", "email", "password", "first_name", "last_name")
-#         read_only_fields = ("id",)
-
-#     def create(self, validated_data):
-
-#         category_data = validated_data.pop('category', None)
-#         if category_data:
-#             category, _ = Category.objects.get_or_create(name=category_data['name'])
-#             validated_data['category'] = category
-
-#         user = self.context['request'].user
-#         grievance = Grievance.objects.create(citizen=user, **validated_data)
-#         return grievance
-
-
-# class FeedbackSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Feedback
-#         fields = ['id', 'grievance', 'rating', 'comments', 'created_at']
-
-
-# class RegisterSerializer(serializers.ModelSerializer):
-#     email = serializers.EmailField(
-#         required=False,
-#         validators=[UniqueValidator(queryset=User.objects.all())]
-#     )
-#     password = serializers.CharField(write_only=True, min_length=8)
-
-#     class Meta:
-#         model = User
-#         fields = ("id", "username", "email", "password", "first_name", "last_name")
-#         read_only_fields = ("id",)
-
-#     def create(self, validated_data):
-
-#         password = validated_data.pop("password")
-#         user = User(**validated_data)
-#         user.set_password(password)
-#         user.save()
-
+# backend/citizen/serializers.py
 from rest_framework import serializers
-from .models import Grievance, Feedback, User
+from django.contrib.auth import get_user_model
+from .models import Category, Grievance,Feedback
+from rest_framework import serializers
 
-class RegisterSerializer(serializers.ModelSerializer):
+User = get_user_model()
+
+class CategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['username', 'email', 'password', 'role']
-        extra_kwargs = {'password': {'write_only': True}}
+        model = Category
+        fields = ('id', 'name')
 
 class GrievanceSerializer(serializers.ModelSerializer):
+    # Accept category (id) or category_name (string)
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), required=False, allow_null=True)
+    category_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Grievance
-        fields = '__all__'
+        fields = (
+            'id', 'user', 'category', 'category_name',
+            'title', 'description', 'attachment',
+            'status', 'assigned_to', 'created_at', 'updated_at'
+        )
+        read_only_fields = ('id', 'user', 'status', 'created_at', 'updated_at')
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        category_name = validated_data.pop('category_name', None)
+        category = validated_data.pop('category', None)
+
+        if category is None and category_name:
+            category, _ = Category.objects.get_or_create(name=category_name.strip())
+
+        grievance = Grievance.objects.create(user=user, category=category, **validated_data)
+        return grievance
+
+class GrievanceUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Grievance
+        fields = ('status', 'assigned_to')
 
 class FeedbackSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
     class Meta:
         model = Feedback
-        fields = '__all__'
+        fields = ('id', 'grievance', 'user', 'rating', 'comments', 'created_at')
+        read_only_fields = ('id', 'user', 'created_at')
 
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        return super().create(validated_data)

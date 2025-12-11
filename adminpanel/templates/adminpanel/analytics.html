@@ -1,0 +1,319 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — Analytics</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <link rel="icon" href="{% static 'images/favicon.ico' %}">
+
+  <style>
+    :root{
+      --bg-start: #071124;
+      --bg-end:   #072f2e;
+      --brand:    #0ea5a4;
+      --accent:   #4f46e5;
+      --text-high:#e6eef3;
+      --text-muted:#a8bbc6;
+      --card-bg: rgba(255,255,255,0.02);
+    }
+    html,body { height:100%; margin:0; }
+    body {
+      background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+      color: var(--text-high);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    .glass {
+      background: linear-gradient(180deg, var(--card-bg), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 8px 28px rgba(2,6,23,0.45);
+      backdrop-filter: blur(6px);
+      border-radius:.75rem;
+    }
+    header.topbar { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.25rem; height:68px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .sidebar { width:18rem; padding:1.25rem; display:flex; flex-direction:column; gap:1rem; }
+
+    main.content { padding:1.25rem; overflow:auto; max-height: calc(100vh - 68px); }
+
+    .kpi-grid { display:grid; grid-template-columns:repeat(1,1fr); gap:1rem; }
+    @media(min-width:640px){ .kpi-grid { grid-template-columns:repeat(4,1fr); } }
+    .kpi { padding:.9rem; display:flex; justify-content:space-between; align-items:center; }
+
+    .charts { display:grid; grid-template-columns:1fr; gap:1rem; }
+    @media(min-width:1024px) { .charts { grid-template-columns: 2fr 1fr; } }
+
+    .chart-box { padding:1rem; min-height:220px; }
+
+    .list { padding:1rem; max-height:36vh; overflow:auto; }
+
+    .muted { color:var(--text-muted); }
+    .text-high { color:var(--text-high); }
+
+    /* small helper */
+    .legend-item { display:flex; gap:.5rem; align-items:center; }
+    .legend-swatch { width:12px; height:12px; border-radius:2px; display:inline-block; }
+  </style>
+</head>
+<body>
+  <div style="display:flex; min-height:100vh;">
+    <!-- sidebar (same as other pages) -->
+    <aside class="sidebar glass">
+      <div class="flex items-center gap-3">
+        <img src="{% static 'images/favicon.ico' %}" class="w-12 h-12 rounded-lg" alt="logo">
+        <div>
+          <div class="font-bold text-lg">Grievance Admin</div>
+          <div class="text-xs muted">Control center</div>
+        </div>
+      </div>
+
+      <nav class="flex-1">
+        <ul class="space-y-1">
+          <li><a href="{% url 'adminpanel:dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition bg-white/6 hover:bg-white/10"><i data-lucide="home" class="w-4 h-4"></i> Dashboard</a></li>
+          <li><a href="{% url 'adminpanel:grievances_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="file-text" class="w-4 h-4"></i> Grievances</a></li>
+          <li><a href="{% url 'adminpanel:analytics' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="bar-chart-2" class="w-4 h-4"></i> Analytics</a></li>
+          <li><a href="{% url 'adminpanel:users' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="users" class="w-4 h-4"></i> Users</a></li>
+          <li><a href="{% url 'adminpanel:categories' %}" class="flex items-center gap-3 px-3 py-2 rounded-md ui-transition hover:bg-white/6"><i data-lucide="tag" class="w-4 h-4"></i> Categories</a></li>
+        </ul>
+      </nav>
+
+      <div class="text-xs muted">Logged in as <div class="font-medium">{{ request.user.username }}</div></div>
+    </aside>
+
+    <!-- main -->
+    <div style="flex:1; display:flex; flex-direction:column;">
+      <header class="topbar glass">
+        <div class="flex items-center gap-4">
+          <div class="text-xl font-semibold">Analytics</div>
+          <div class="text-sm muted hidden sm:block">Status, categories, and SLA trends</div>
+        </div>
+        <div class="flex items-center gap-3">
+          <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
+            <button type="submit" class="px-3 py-2 rounded bg-white/6 hover:bg-white/10">Sign out</button>
+          </form>
+        </div>
+      </header>
+
+      <main class="content">
+        <!-- KPIs -->
+        <div class="kpi-grid mb-4">
+          <div class="glass kpi">
+            <div>
+              <div class="text-xs muted">Total grievances</div>
+              <div id="kpi-total" class="text-2xl font-bold">—</div>
+              <div class="text-xs muted">All time</div>
+            </div>
+            <div class="p-3 rounded-md bg-white/4"><i data-lucide="list" class="w-6 h-6"></i></div>
+          </div>
+          <div class="glass kpi">
+            <div>
+              <div class="text-xs muted">Open</div>
+              <div id="kpi-open" class="text-2xl font-bold">—</div>
+              <div class="text-xs muted">New / In progress</div>
+            </div>
+            <div class="p-3 rounded-md bg-white/4"><i data-lucide="clock" class="w-6 h-6"></i></div>
+          </div>
+          <div class="glass kpi">
+            <div>
+              <div class="text-xs muted">Resolved</div>
+              <div id="kpi-resolved" class="text-2xl font-bold">—</div>
+              <div class="text-xs muted">Completed</div>
+            </div>
+            <div class="p-3 rounded-md bg-white/4"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+          </div>
+          <div class="glass kpi">
+            <div>
+              <div class="text-xs muted">Avg resolution (days)</div>
+              <div id="kpi-sla" class="text-2xl font-bold">—</div>
+              <div class="text-xs muted">SLA</div>
+            </div>
+            <div class="p-3 rounded-md bg-white/4"><i data-lucide="trending-up" class="w-6 h-6"></i></div>
+          </div>
+        </div>
+
+        <div class="charts">
+          <!-- left: status doughnut + categories bar -->
+          <div class="glass chart-box">
+            <div style="display:flex; gap:1rem; align-items:stretch; flex-wrap:wrap;">
+              <div style="flex:1; min-width:260px; height:240px;">
+                <canvas id="statusChart" style="width:100%; height:100%;"></canvas>
+              </div>
+              <div style="flex:1; min-width:260px;">
+                <div class="text-sm muted mb-2">Top categories</div>
+                <div id="categoriesChartWrap" style="height:240px;">
+                  <canvas id="categoriesChart" style="width:100%; height:100%;"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- right: recent trends / table -->
+          <div class="glass list">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm text-high font-semibold">Summary</div>
+              <div class="text-xs muted">Updated live</div>
+            </div>
+
+            <div id="summaryList" class="space-y-2 text-sm muted">
+              <div>Loading analytics…</div>
+            </div>
+
+            <hr class="my-3 border-white/6" />
+
+            <div>
+              <div class="text-sm text-high font-semibold mb-2">Category breakdown</div>
+              <ul id="topCategoryList" class="space-y-1 text-sm muted"></ul>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+<script>
+/* Analytics page script
+   - fetches /adminpanel/api/analytics/
+   - renders status doughnut and top categories bar
+   - robust to empty/401 responses
+*/
+
+const API = '/adminpanel/api/analytics/';
+
+function fetchJSON(url, opts = {}) {
+  opts.credentials = 'same-origin';
+  opts.headers = Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}, opts.headers || {});
+  return fetch(url, opts).then(res => {
+    if (!res.ok) {
+      const err = new Error('HTTP ' + res.status);
+      err.status = res.status;
+      throw err;
+    }
+    return res.json();
+  });
+}
+
+let statusChart = null;
+let categoriesChart = null;
+
+const DEFAULT_STATUSES = ['new','in_progress','resolved','closed','pending'];
+const STATUS_LABELS = { new:'New', in_progress:'In Progress', resolved:'Resolved', closed:'Closed', pending:'Pending' };
+const COLORS = ['#0ea5a4','#4f46e5','#10b981','#f59e0b','#ef4444'];
+
+function normalizeByStatus(raw){
+  if (!raw || typeof raw !== 'object') return DEFAULT_STATUSES.reduce((a,k)=> (a[k]=0,a), {});
+  const normalized = {};
+  Object.entries(raw).forEach(([k,v]) => normalized[String(k).toLowerCase()] = Number(v || 0));
+  // ensure canonical keys present (so charts render)
+  DEFAULT_STATUSES.forEach(s => { if (normalized[s] === undefined) normalized[s] = 0; });
+  return normalized;
+}
+
+function renderStatusChart(by_status) {
+  const normalized = normalizeByStatus(by_status);
+  const keys = Object.keys(normalized);
+  const labels = keys.map(k => STATUS_LABELS[k] ?? k.replace(/_/g,' '));
+  const values = keys.map(k => normalized[k] || 0);
+  const bg = keys.map((_,i) => COLORS[i % COLORS.length]);
+
+  const ctx = document.getElementById('statusChart');
+  if (statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets:[{ data: values, backgroundColor: bg, borderWidth: 0 }] },
+    options: {
+      responsive:true,
+      plugins: {
+        legend: { position:'bottom', labels:{ color:'rgba(230,238,243,0.95)' } },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed}` } }
+      },
+      maintainAspectRatio: false
+    }
+  });
+}
+
+function renderCategoriesChart(categories) {
+  // categories: [{id,name,count}, ...]
+  const top = (categories || []).slice(0,8);
+  const labels = top.map(c=>c.name);
+  const values = top.map(c=>c.count);
+  const bg = labels.map((_,i)=> COLORS[i % COLORS.length]);
+
+  const ctx = document.getElementById('categoriesChart');
+  if (categoriesChart) categoriesChart.destroy();
+  categoriesChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets:[{ data: values, backgroundColor: bg }] },
+    options: {
+      indexAxis: 'y',
+      responsive:true,
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => `${ctx.parsed.x}` } } },
+      scales: {
+        x: { ticks: { color: 'rgba(230,238,243,0.9)' }, grid: { display: false } },
+        y: { ticks: { color: 'rgba(230,238,243,0.9)' }, grid: { display: false } }
+      },
+      maintainAspectRatio:false
+    }
+  });
+}
+
+function renderSummary(data) {
+  document.getElementById('kpi-total').textContent = data.total_grievances ?? '—';
+  const bs = data.by_status || {};
+  const open = Number(bs.new || 0) + Number(bs.in_progress || 0);
+  document.getElementById('kpi-open').textContent = open;
+  document.getElementById('kpi-resolved').textContent = (bs.resolved || 0);
+  document.getElementById('kpi-sla').textContent = (data.avg_resolution_days !== null && data.avg_resolution_days !== undefined) ? data.avg_resolution_days : '—';
+
+  // summary block
+  const sum = document.getElementById('summaryList');
+  sum.innerHTML = `
+    <div>Status counts: ${Object.entries(bs).map(([k,v]) => `<span class="legend-item"><span class="legend-swatch" style="background:${COLORS[DEFAULT_STATUSES.indexOf(k) % COLORS.length] || '#777'}"></span> ${STATUS_LABELS[k] ?? k}: <strong style="margin-left:.5rem">${v}</strong></span>`).join('<br>')}</div>
+    <div class="mt-2">Total categories: <strong>${(data.by_category || []).length}</strong></div>
+  `;
+
+  // category list
+  const catList = document.getElementById('topCategoryList');
+  catList.innerHTML = '';
+  (data.by_category || []).slice(0,10).forEach(c => {
+    const li = document.createElement('li');
+    li.innerHTML = `<div style="display:flex;justify-content:space-between"><span>${c.name}</span><span class="muted">${c.count}</span></div>`;
+    catList.appendChild(li);
+  });
+}
+
+/* initial load & error handling */
+(async function initAnalytics(){
+  try {
+    const data = await fetchJSON(API);
+    // ensure shape includes by_status, by_category etc.
+    renderStatusChart(data.by_status || {});
+    renderCategoriesChart(data.by_category || []);
+    renderSummary(data);
+  } catch (err) {
+    console.error('analytics load failed', err);
+    if (err && err.status === 401) {
+      // show friendly message
+      document.getElementById('kpi-total').textContent = '—';
+      document.getElementById('summaryList').innerHTML = '<div class="text-yellow-300">Unauthorized — please login to view analytics.</div>';
+    } else {
+      document.getElementById('summaryList').innerHTML = '<div class="text-red-400">Could not load analytics at this time.</div>';
+      // render empty charts so UI remains consistent
+      renderStatusChart({});
+      renderCategoriesChart([]);
+    }
+  }
+})();
+
+</script>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>
+

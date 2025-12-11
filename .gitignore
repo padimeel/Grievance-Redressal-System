@@ -1,34 +1,42 @@
-# Python
+﻿# Python cache
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 
-# Virtual env
-grievence_env/
+# Virtual environments
+.venv/
 venv/
-env/
 ENV/
+env/
 
-# Django
-*.db
+# Django local database
 db.sqlite3
-media/
-staticfiles/
+*.sqlite3
 
-# VSCode
-.vscode/   
-.idea/
+# Django migrations (ignore all migration files but keep __init__.py)
+**/migrations/*
+!**/migrations/__init__.py
 
-# Env files
+# Environment files
 .env
 *.env
 
-# Node (if later)
-node_modules/
-build/
-dist/
+# IDE / editor
+.vscode/
+.idea/
+*.iml
 
-# OS
+# Logs
+*.log
+
+# OS files
 .DS_Store
 Thumbs.db
+
+# Build / static
+staticfiles/
+media/
+
+# Pip / cache
+pip-wheel-metadata/
+__pypackages__/

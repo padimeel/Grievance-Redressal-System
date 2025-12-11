@@ -1,26 +1,14 @@
 # citizen/urls.py
 from django.urls import path
+from .views import CitizenDashboardView, GrievanceListView, GrievanceCreateView, GrievanceDetailView
 
-from .views import RegisterView, GrievanceListCreateView
-
-
-
-urlpatterns = [
-    path('auth/register/', RegisterView.as_view(), name='register'),
-    # OR if using auto-login:
-    # path('auth/register/', RegisterAndLoginView.as_view(), name='register_and_login'),
-
-    path('citizens/grievances/', GrievanceListCreateView.as_view(), name='grievance-list-create'),
-    #path('citizens/feedback/', FeedbackCreateView.as_view(), name='feedback-create'),
-    
-
-]
-
-from . import views
+app_name = 'citizen'
 
 urlpatterns = [
-    path('register/', views.RegisterView.as_view(), name='register'),
-    path('login/', views.LoginView.as_view(), name='login'),
-    path('grievances/', views.GrievanceListCreateView.as_view(), name='grievance-list-create'),
+    path('dashboard/', CitizenDashboardView.as_view(), name='dashboard'),
+    path('grievances/', GrievanceListView.as_view(), name='grievance-list'),
+    path('grievances/new/', GrievanceCreateView.as_view(), name='grievance-create'),
+    path('grievances/<int:pk>/', GrievanceDetailView.as_view(), name='grievance-detail')  # new
+
 ]
 

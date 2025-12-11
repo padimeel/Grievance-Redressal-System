@@ -1,34 +1,23 @@
-"""
-URL configuration for backend project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-# from django.contrib import admin
-# from django.urls import path, include
-# from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
-# urlpatterns = [
-#     path('admin/', admin.site.urls),
-#     path('api/v1/', include('citizen.urls')),
-
+# backend/urls.py
 from django.contrib import admin
 from django.urls import path, include
+from django.shortcuts import redirect
+
+def redirect_to_adminpanel_reset(request):
+    uid = request.GET.get('uid', '')
+    token = request.GET.get('token', '')
+    return redirect(f"/adminpanel/reset-password?uid={uid}&token={token}")
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('citizen.urls')),  # 👈 replace officer_app with your app’s name
+    path('adminpanel/', include('adminpanel.urls', namespace='adminpanel')),
+    path('reset-password/', redirect_to_adminpanel_reset),  # add trailing slash
+    path('accounts/', include('accounts.urls', namespace='accounts')),
+    path('citizen/', include('citizen.urls', namespace='citizen')),
+    path('officer/', include('officer.urls', namespace='officer')),
 ]
+
+
 
 
 
