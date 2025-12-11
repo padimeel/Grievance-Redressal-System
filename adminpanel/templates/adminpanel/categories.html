@@ -68,6 +68,7 @@
     .actions button{margin-left:8px;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.03);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
     .actions button:hover{background:linear-gradient(90deg,#0ea5a4,#06b6d4);color:#042028}
     .actions button.primary{background:var(--accent);color:#042028}
+    .actions button i{pointer-events:none} /* ensure clicking the icon triggers the button */
 
     /* modal */
     .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:60}
@@ -115,7 +116,7 @@
     <header class="top">
       <div>
         <div style="font-size:1.2rem;font-weight:800">Officers</div>
-        <div style="color:var(--muted);margin-top:4px">Manage officers, departments and usage — improved visual style</div>
+        <div style="color:var(--muted);margin-top:4px">Manage officers, departments and usage</div>
       </div>
 
       <div style="display:flex;gap:12px;align-items:center">
@@ -186,7 +187,6 @@
       </div>
 
       <div class="pager">
-        <div style="color:var(--muted);font-size:.9rem">Tip: Use the action buttons to edit or delete</div>
         <div class="controls">
           <button id="prevPageBottom" class="btn">◀</button>
           <button id="nextPageBottom" class="btn">▶</button>
@@ -232,19 +232,79 @@
 </div></div>
 
 <script>
-const API_BASE = '/adminpanel/api/categories/';
-let categories = []; let filtered = []; let currentPage = 1; const pageSize = 12; let editingId = null; let deletingId = null;
+/* ---------- Config & state ---------- */
+const API_BASE = '/adminpanel/api/categories/'; // default list/create endpoint
+let categories = [];            // local array when API returns plain array
+let filtered = [];              // filtered result for client-side search/pagination
+let currentPage = 1;            // client-side page index (1-based)
+const pageSize = 12;
 
-function getCookie(name){const v=document.cookie.match('(^|;)\s*'+name+'\s*=\s*([^;]+)');return v?v.pop():''}
-async function apiFetch(url, opts={}){opts.credentials='same-origin';opts.headers=Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRFToken':getCookie('csrftoken')}, opts.headers||{});const res = await fetch(url, opts); if(!res.ok){ const body = await res.clone().json().catch(()=>null); const err = new Error('HTTP '+res.status); err.status=res.status; err.body=body; throw err } return res.status===204?null:await res.json().catch(()=>null)}
+let editingId = null;
+let deletingId = null;
 
-function escapeHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
-function renderValue(v){ if(v===null||v===undefined||v==='') return '-'; if(typeof v==='object'){ if(v.name) return escapeHtml(v.name); if(v.title) return escapeHtml(v.title); try{ const s=JSON.stringify(v); return escapeHtml(s.length>80? s.slice(0,77)+'...':s)}catch(e){return '-'} } return escapeHtml(v) }
+/* server-pagination state (if API returns next/previous links) */
+let serverNext = null;
+let serverPrev = null;
+let serverCount = null;
+let lastLoadedUrl = API_BASE;
 
-function renderTable(){ const tbody = document.getElementById('categoryBody'); tbody.innerHTML = '';
-  if(!filtered.length){ tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">No officers found.</td></tr>'; document.getElementById('showingInfo').textContent='0'; return }
-  const start = (currentPage-1)*pageSize; const end = start + pageSize; filtered.slice(start,end).forEach(c=>{
-    const tr = document.createElement('tr'); tr.className = 'row';
+/* ---------- helpers ---------- */
+function getCookie(name){const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');return v?v.pop():''}
+async function apiFetch(url, opts={}){
+  // allow passing body & method; default to same-origin credentials and CSRF for Django sessions
+  opts = Object.assign({credentials:'same-origin'}, opts);
+  opts.headers = Object.assign({
+    'Accept':'application/json',
+    'X-Requested-With':'XMLHttpRequest',
+    'X-CSRFToken': getCookie('csrftoken')
+  }, opts.headers || {});
+  const res = await fetch(url, opts);
+  if(!res.ok){
+    // try to parse body for debugging
+    let body = null;
+    try{ body = await res.clone().json(); }catch(e){}
+    const err = new Error('HTTP '+res.status);
+    err.status = res.status; err.body = body;
+    throw err;
+  }
+  if(res.status === 204) return null;
+  // handle cases where response isn't json
+  const text = await res.text();
+  try { return JSON.parse(text); } catch(e) { return text; }
+}
+
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;') }
+function renderValue(v){
+  if(v===null||v===undefined||v==='') return '-';
+  if(typeof v === 'object'){
+    if(v.name) return escapeHtml(v.name);
+    if(v.title) return escapeHtml(v.title);
+    try{ const s = JSON.stringify(v); return escapeHtml(s.length>80? s.slice(0,77)+'...': s) }catch(e){ return '-' }
+  }
+  return escapeHtml(v);
+}
+
+/* ---------- rendering ---------- */
+function renderTable(){
+  const tbody = document.getElementById('categoryBody');
+  tbody.innerHTML = '';
+  if(!filtered || filtered.length === 0){
+    tbody.innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">No officers found.</td></tr>';
+    document.getElementById('showingInfo').textContent='0';
+    if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
+    return;
+  }
+
+  // If we're using server-side pagination, filtered holds current page only
+  const useServerPaging = !!(serverNext !== null || serverPrev !== null);
+  const start = useServerPaging ? 1 : (currentPage-1)*pageSize + 1;
+  const rows = useServerPaging ? filtered : filtered.slice((currentPage-1)*pageSize, (currentPage-1)*pageSize + pageSize);
+
+  rows.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.className = 'row';
+    // department may be object or string
+    const deptDisplay = (typeof c.department === 'object') ? (c.department.name || c.department) : c.department;
     tr.innerHTML = `
       <td style="width:60px">${renderValue(c.id)}</td>
       <td>
@@ -256,65 +316,282 @@ function renderTable(){ const tbody = document.getElementById('categoryBody'); t
           </div>
         </div>
       </td>
-      <td><span class="dept-badge">${renderValue(c.department)}</span></td>
+      <td><span class="dept-badge">${renderValue(deptDisplay)}</span></td>
       <td>${renderValue(c.count)}</td>
       <td style="text-align:right" class="actions">
         <button data-edit="${escapeHtml(c.id)}" title="Edit"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
         <button data-del="${escapeHtml(c.id)}" title="Delete"><i data-lucide="trash" class="w-4 h-4" style="color:#ff9aa2"></i></button>
       </td>
     `;
-    // removed row click — actions are done via buttons only
     tbody.appendChild(tr);
   });
-  document.getElementById('showingInfo').textContent = `${Math.min(start+1,filtered.length)}-${Math.min(end,filtered.length)} of ${filtered.length}`;
-  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click',onEditClick));
-  Array.from(document.querySelectorAll('button[data-del]')).forEach(b=>b.addEventListener('click',onDelClick));
+
+  // showing info
+  if(useServerPaging){
+    const from = 1;
+    const to = rows.length;
+    document.getElementById('showingInfo').textContent = `${from}-${to} of ${serverCount !== null ? serverCount : '?'}`;
+  } else {
+    const from = (currentPage-1)*pageSize + 1;
+    const to = Math.min((currentPage-1)*pageSize + rows.length, filtered.length);
+    document.getElementById('showingInfo').textContent = `${from}-${to} of ${filtered.length}`;
+  }
+
+  // attach handlers
+  Array.from(document.querySelectorAll('button[data-edit]')).forEach(b=>b.addEventListener('click', onEditClick));
+  Array.from(document.querySelectorAll('button[data-del]')).forEach(b=>b.addEventListener('click', onDelClick));
+
+  // render lucide icons for freshly added nodes
+  if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
 }
 
-async function loadCategories(){ try{
-    const data = await apiFetch(API_BASE);
-    console.log('API response:', data);
-    categories = Array.isArray(data)?data:[]; filtered = categories.slice(); currentPage = 1; renderTable();
-    document.getElementById('totalCategories').textContent = String(categories.length || 0);
-    document.getElementById('deptCount').textContent = String(new Set(categories.map(c=> typeof c.department==='object'?c.department.name:(c.department||'')).filter(Boolean)).size || '—');
-    const avg = categories.reduce((s,c)=>s+(c.count||0),0)/(categories.length||1); document.getElementById('avgUsage').textContent = categories.length?Math.round(avg*10)/10:'—';
-  } catch(e){ console.error(e); document.getElementById('categoryBody').innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Failed to load officers.</td></tr>'; document.getElementById('totalCategories').textContent='—' }
+/* ---------- load data (supports DRF pagination or plain array) ---------- */
+async function loadCategories(url = API_BASE){
+  lastLoadedUrl = url;
+  try {
+    const data = await apiFetch(url);
+    // If API returned DRF-style paginated object
+    if(data && Array.isArray(data.results)){
+      categories = data.results || [];
+      serverNext = data.next || null;
+      serverPrev = data.previous || null;
+      serverCount = (typeof data.count === 'number') ? data.count : null;
+      filtered = categories.slice(); // filtered contains current page items
+      currentPage = 1; // server page uses different indexing; we show rows directly
+    }
+    // If API returned plain array
+    else if(Array.isArray(data)){
+      categories = data;
+      serverNext = serverPrev = null;
+      serverCount = null;
+      filtered = categories.slice();
+      currentPage = 1;
+    }
+    // Unexpected shape: try to coerce
+    else {
+      console.warn('Unexpected response shape from categories API', data);
+      categories = Array.isArray(data) ? data : [];
+      filtered = categories.slice();
+      serverNext = serverPrev = null;
+      serverCount = null;
+      currentPage = 1;
+    }
+
+    renderTable();
+    // stats
+    document.getElementById('totalCategories').textContent = String((Array.isArray(categories) ? categories.length : 0) || 0);
+    const deptNames = new Set((categories || []).map(c=>{
+      const d = (typeof c.department === 'object' ? (c.department.name || '') : (c.department || ''));
+      return (d||'').toString().trim();
+    }).filter(Boolean));
+    document.getElementById('deptCount').textContent = String(deptNames.size || '—');
+    const avg = (categories || []).reduce((s,c)=>s+(Number(c.count)||0),0) / ((categories && categories.length) || 1);
+    document.getElementById('avgUsage').textContent = (categories && categories.length) ? (Math.round(avg*10)/10) : '—';
+
+    // enable/disable pagination buttons (server or client)
+    updatePaginationButtons();
+  } catch (err){
+    console.error(err);
+    document.getElementById('categoryBody').innerHTML = '<tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted)">Failed to load officers.</td></tr>';
+    document.getElementById('totalCategories').textContent='—';
+    serverNext = serverPrev = null;
+    serverCount = null;
+    updatePaginationButtons();
+    if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
+  }
 }
 
-// Modals
-function showModal(id){document.getElementById(id).classList.add('show')}
-function hideModal(id){document.getElementById(id).classList.remove('show')}
-function openEdit(item){ document.getElementById('catModalTitle').textContent = 'Edit Officer'; document.getElementById('catName').value = (item && item.name && typeof item.name === 'object') ? (item.name.name || '') : (item && item.name ? item.name : ''); document.getElementById('catDept').value = (item && item.department && typeof item.department === 'object') ? (item.department.name || '') : (item && item.department ? item.department : ''); showModal('catModal') }
+/* ---------- pagination UI ---------- */
+function updatePaginationButtons(){
+  const prevBtns = [document.getElementById('prevPage'), document.getElementById('prevPageBottom')];
+  const nextBtns = [document.getElementById('nextPage'), document.getElementById('nextPageBottom')];
 
-// events
-['catClose','catCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('catModal')));
-document.getElementById('addBtn').addEventListener('click',()=>{ editingId = null; document.getElementById('catModalTitle').textContent = 'Add Officer'; document.getElementById('catName').value=''; document.getElementById('catDept').value=''; showModal('catModal'); });
+  // if server pagination is active use serverNext/serverPrev, else use client paging
+  if(serverNext !== null || serverPrev !== null){
+    prevBtns.forEach(b => { if(b) b.disabled = !serverPrev; });
+    nextBtns.forEach(b => { if(b) b.disabled = !serverNext; });
+  } else {
+    const max = Math.ceil((filtered.length || 0) / pageSize) || 1;
+    prevBtns.forEach(b => { if(b) b.disabled = (currentPage <= 1); });
+    nextBtns.forEach(b => { if(b) b.disabled = (currentPage >= max); });
+  }
+}
 
-document.getElementById('catSave').addEventListener('click', async ()=>{
-  const name = document.getElementById('catName').value.trim(); const dept = document.getElementById('catDept').value.trim();
-  if(!name){ document.getElementById('catNameErr').style.display='block'; document.getElementById('catNameErr').textContent='Name required'; return }
-  try{
-    if(editingId){ await apiFetch(API_BASE+editingId+'/',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
-    else{ await apiFetch(API_BASE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,department:dept||null})}); }
-    await loadCategories(); hideModal('catModal');
-  }catch(err){ console.error(err); alert('Save failed') }
+/* ---------- modal helpers ---------- */
+function showModal(id){ document.getElementById(id).classList.add('show'); }
+function hideModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function openEdit(item){
+  document.getElementById('catModalTitle').textContent = item ? 'Edit Officer' : 'Add Officer';
+  document.getElementById('catName').value = (item && item.name && typeof item.name === 'object') ? (item.name.name || '') : (item && item.name ? item.name : '');
+  document.getElementById('catDept').value = (item && item.department && typeof item.department === 'object') ? (item.department.name || '') : (item && item.department ? item.department : '');
+  document.getElementById('catNameErr').style.display = 'none';
+  showModal('catModal');
+}
+
+/* ---------- events: open / close modals ---------- */
+['catClose','catCancel'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('click', ()=> hideModal('catModal'));
+});
+document.getElementById('addBtn').addEventListener('click', ()=>{
+  editingId = null;
+  document.getElementById('catModalTitle').textContent = 'Add Officer';
+  document.getElementById('catName').value = '';
+  document.getElementById('catDept').value = '';
+  document.getElementById('catNameErr').style.display = 'none';
+  showModal('catModal');
 });
 
-function onEditClick(e){ e.stopPropagation(); const id = e.currentTarget.getAttribute('data-edit'); if(!id) return; editingId = id; const item = categories.find(x=>String(x.id)===String(id)); openEdit(item); }
-function onDelClick(e){ e.stopPropagation(); deletingId = e.currentTarget.getAttribute('data-del'); document.getElementById('delName').textContent = categories.find(c=>String(c.id)===String(deletingId))?.name || ''; showModal('delModal'); }
+/* ---------- save (create/update) ---------- */
+document.getElementById('catSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('catName').value.trim();
+  const dept = document.getElementById('catDept').value.trim();
+  document.getElementById('catNameErr').style.display = 'none';
+  if(!name){
+    document.getElementById('catNameErr').style.display = 'block';
+    document.getElementById('catNameErr').textContent = 'Name required';
+    return;
+  }
+  try{
+    if(editingId){
+      // PATCH to update
+      await apiFetch(API_BASE + editingId + '/', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, department: dept || null })
+      });
+    } else {
+      // POST to create (server may ignore department if expected object)
+      await apiFetch(API_BASE, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name, department: dept || null })
+      });
+    }
+    // reload current page: if server paged, reload lastLoadedUrl; else reload base
+    await loadCategories(lastLoadedUrl || API_BASE);
+    hideModal('catModal');
+  } catch (err){
+    console.error(err);
+    alert('Save failed — check console for details');
+  }
+});
 
-['delClose','delCancel'].forEach(id=>document.getElementById(id).addEventListener('click',()=>hideModal('delModal')));
-document.getElementById('delConfirm').addEventListener('click', async ()=>{ if(!deletingId) return; const btn = document.getElementById('delConfirm'); btn.disabled=true; btn.textContent='Deleting...'; try{ await apiFetch(API_BASE+deletingId+'/',{method:'DELETE'}); await loadCategories(); hideModal('delModal'); deletingId=null } catch(err){ console.error(err); alert('Delete failed') } finally{ btn.disabled=false; btn.textContent='Delete' } });
+/* ---------- edit/delete button handlers ---------- */
+function onEditClick(e){
+  e.stopPropagation();
+  const id = e.currentTarget.getAttribute('data-edit');
+  if(!id) return;
+  editingId = id;
+  // find item — if server-paged, search filtered; otherwise search categories
+  const source = (serverNext || serverPrev) ? filtered : categories;
+  const item = (source || []).find(x => String(x.id) === String(id));
+  openEdit(item);
+}
 
-// pagination & search
-[ 'prevPage','prevPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ if(currentPage>1){ currentPage--; renderTable() } }) });
-[ 'nextPage','nextPageBottom' ].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('click', ()=>{ const max=Math.ceil(filtered.length/pageSize); if(currentPage<max){ currentPage++; renderTable() } }) });
+function onDelClick(e){
+  e.stopPropagation();
+  const id = e.currentTarget.getAttribute('data-del');
+  if(!id) return;
+  deletingId = id;
+  document.getElementById('delName').textContent = (categories.find(c=>String(c.id)===String(id)) || {}).name || '';
+  showModal('delModal');
+}
 
-document.getElementById('searchBox').addEventListener('input', e=>{ const q=(e.target.value||'').trim().toLowerCase(); filtered = q? categories.filter(c=>{ const name = (typeof c.name==='object'?c.name.name:(c.name||'')); const dept = (typeof c.department==='object'?c.department.name:(c.department||'')); return (String(name)+' '+String(dept)).toLowerCase().includes(q) }) : categories.slice(); currentPage=1; renderTable(); });
+/* ---------- delete confirm ---------- */
+['delClose','delCancel'].forEach(id => {
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('click', ()=> hideModal('delModal'));
+});
 
+document.getElementById('delConfirm').addEventListener('click', async ()=>{
+  if(!deletingId) return;
+  const btn = document.getElementById('delConfirm');
+  btn.disabled = true;
+  const txt = btn.textContent;
+  btn.textContent = 'Deleting...';
+  try{
+    await apiFetch(API_BASE + deletingId + '/', { method: 'DELETE' });
+    // reload current page (server or client)
+    await loadCategories(lastLoadedUrl || API_BASE);
+    hideModal('delModal');
+    deletingId = null;
+  } catch(err){
+    console.error(err);
+    alert('Delete failed — check console for details');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
+});
+
+/* ---------- pagination controls ---------- */
+['prevPage','prevPageBottom'].forEach(id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click', async ()=>{
+    if(serverPrev){
+      // server-provided URL (absolute or relative)
+      await loadCategories(serverPrev);
+    } else {
+      if(currentPage > 1){
+        currentPage--;
+        renderTable();
+        updatePaginationButtons();
+      }
+    }
+  });
+});
+['nextPage','nextPageBottom'].forEach(id => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click', async ()=>{
+    if(serverNext){
+      await loadCategories(serverNext);
+    } else {
+      const max = Math.ceil((filtered.length || 0) / pageSize) || 1;
+      if(currentPage < max){
+        currentPage++;
+        renderTable();
+        updatePaginationButtons();
+      }
+    }
+  });
+});
+
+/* ---------- search input ---------- */
+document.getElementById('searchBox').addEventListener('input', e => {
+  const q = (e.target.value || '').trim().toLowerCase();
+  // if server pagination active, do client-side filter on current page items only
+  if(serverNext || serverPrev){
+    filtered = q ? (categories.filter(c => {
+      const name = (typeof c.name === 'object' ? (c.name.name || '') : (c.name || ''));
+      const dept = (typeof c.department === 'object' ? (c.department.name || '') : (c.department || ''));
+      return (String(name)+' '+String(dept)).toLowerCase().includes(q);
+    })) : categories.slice();
+    renderTable();
+    updatePaginationButtons();
+  } else {
+    filtered = q ? categories.filter(c => {
+      const name = (typeof c.name === 'object' ? (c.name.name || '') : (c.name || ''));
+      const dept = (typeof c.department === 'object' ? (c.department.name || '') : (c.department || ''));
+      return (String(name)+' '+String(dept)).toLowerCase().includes(q);
+    }) : categories.slice();
+    currentPage = 1;
+    renderTable();
+    updatePaginationButtons();
+  }
+});
+
+/* ---------- initial load ---------- */
 loadCategories();
+
+/* create lucide icons for static parts immediately (header/sidebar etc.) */
+if(window.lucide && typeof lucide.createIcons === 'function') lucide.createIcons();
 </script>
 <script>lucide.createIcons();</script>
 </body>
 </html>
+
 
