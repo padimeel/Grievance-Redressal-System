@@ -1,0 +1,194 @@
+{% extends 'officer/base_officer.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-6 bg-gray-900 min-h-screen text-white">
+
+    <!-- PAGE HEADER -->
+    <h1 class="text-3xl font-bold mb-8 text-center sm:text-left">Officer Grievances</h1>
+
+    <!-- CATEGORY FILTER -->
+    <div class="bg-gray-800 p-4 rounded-lg mb-6 shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="mb-2 sm:mb-0">
+            <h2 class="text-xl font-semibold">Filter Grievances by Category</h2>
+        </div>
+        <select id="categoryFilter" class="w-full sm:w-1/3 bg-gray-900 text-white px-4 py-2 rounded border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">All Categories</option>
+        </select>
+    </div>
+
+    <!-- STATUS COUNTERS -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
+        <div class="bg-yellow-600 p-4 rounded-lg shadow-md text-center hover:bg-yellow-500 transition">
+            <h3 class="text-lg font-semibold mb-1">Pending</h3>
+            <p id="count_pending" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-blue-600 p-4 rounded-lg shadow-md text-center hover:bg-blue-500 transition">
+            <h3 class="text-lg font-semibold mb-1">In Progress</h3>
+            <p id="count_inprogress" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-green-600 p-4 rounded-lg shadow-md text-center hover:bg-green-500 transition">
+            <h3 class="text-lg font-semibold mb-1">Resolved</h3>
+            <p id="count_resolved" class="text-2xl font-bold">0</p>
+        </div>
+    </div>
+
+    <!-- GRIEVANCE TABLE -->
+    <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-x-auto">
+        <table class="min-w-full text-left rounded-lg overflow-hidden">
+            <thead class="bg-gray-700 text-gray-200">
+                <tr>
+                    <th class="px-4 py-2">ID</th>
+                    <th class="px-4 py-2">Citizen</th>
+                    <th class="px-4 py-2">Category</th>
+                    <th class="px-4 py-2">Description</th>
+                    <th class="px-4 py-2">Status</th>
+                </tr>
+            </thead>
+            <tbody id="grievanceTable" class="bg-gray-900 divide-y divide-gray-700">
+                <tr>
+                    <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const DASHBOARD_API = '{% url "officer:officer_dashboard_api" %}';
+    const categoryFilter = document.getElementById('categoryFilter');
+    const tableBody = document.getElementById('grievanceTable');
+
+    let grievances = [];
+    let categories = [];
+
+    async function fetchData() {
+        try {
+            const res = await fetch(DASHBOARD_API);
+            const data = await res.json();
+
+            grievances = data.grievances || [];
+            categories = data.category_distribution || [];
+
+            populateCategories();
+            renderTable();
+            updateStatusCounts();
+        } catch (err) {
+            console.error("Error fetching grievances:", err);
+        }
+    }
+
+    function populateCategories() {
+        const selected = categoryFilter.value;
+        categoryFilter.innerHTML = `<option value="">All Categories</option>`;
+
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.id;
+            option.textContent = cat.name;
+            if (selected == cat.id) option.selected = true;
+            categoryFilter.appendChild(option);
+        });
+    }
+
+    function renderTable() {
+        const selectedCategory = categoryFilter.value;
+        const filtered = selectedCategory
+            ? grievances.filter(g => g.category_id == selectedCategory)
+            : grievances;
+
+        tableBody.innerHTML = '';
+
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `<tr>
+                <td colspan="5" class="text-center py-6 text-gray-400 font-semibold">
+                    No grievances in this category.
+                </td>
+            </tr>`;
+            return;
+        }
+
+        filtered.forEach((g, index) => {
+            const row = document.createElement('tr');
+            row.classList.add("hover:bg-gray-700", "transition");
+            row.innerHTML = `
+                <td class="px-4 py-2">${g.id}</td>
+                <td class="px-4 py-2">${g.citizen_name}</td>
+                <td class="px-4 py-2">${g.category_name}</td>
+                <td class="px-4 py-2">${g.description}</td>
+                <td class="px-4 py-2">
+                    <select class="bg-gray-800 text-white border border-gray-600 rounded px-2 py-1"
+                        onchange="updateStatus(${g.id}, this.value, ${index})">
+                        <option value="Pending" ${g.status==="Pending"?"selected":""}>Pending</option>
+                        <option value="In Progress" ${g.status==="In Progress"?"selected":""}>In Progress</option>
+                        <option value="Resolved" ${g.status==="Resolved"?"selected":""}>Resolved</option>
+                    </select>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    function updateStatusCounts() {
+        const selectedCategory = categoryFilter.value;
+        const filtered = selectedCategory
+            ? grievances.filter(g => g.category_id == selectedCategory)
+            : grievances;
+
+        document.getElementById('count_pending').textContent = filtered.filter(g => g.status === "Pending").length;
+        document.getElementById('count_inprogress').textContent = filtered.filter(g => g.status === "In Progress").length;
+        document.getElementById('count_resolved').textContent = filtered.filter(g => g.status === "Resolved").length;
+    }
+
+    // Filter table when category changes
+    categoryFilter.addEventListener('change', () => {
+        renderTable();
+        updateStatusCounts();
+    });
+
+    // Update status function
+    window.updateStatus = function(grievanceId, newStatus, index) {
+        fetch('{% url "officer:update_grievance_status_api" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ id: grievanceId, status: newStatus })
+        })
+        .then(res => res.json())
+        .then(data => {
+            grievances[index].status = newStatus;
+            updateStatusCounts();
+
+            // Highlight updated row
+            const row = tableBody.children[index];
+            row.classList.add('bg-gray-600');
+            setTimeout(() => row.classList.remove('bg-gray-600'), 1000);
+        })
+        .catch(() => alert("Failed to update status"));
+    }
+
+    function getCookie(name){
+        let cookieValue = null;
+        if(document.cookie && document.cookie!==''){
+            const cookies = document.cookie.split(';');
+            for(let cookie of cookies){
+                cookie = cookie.trim();
+                if(cookie.startsWith(name+'=')){
+                    cookieValue = decodeURIComponent(cookie.substring(name.length+1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Initial fetch + auto-refresh every 5 seconds
+    fetchData();
+    setInterval(fetchData, 5000);
+});
+</script>
+{% endblock %}
