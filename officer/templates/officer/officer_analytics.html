@@ -1,0 +1,87 @@
+{% extends "officer/base_officer.html" %}
+{% load static %}
+
+{% block title %}Officer Analytics{% endblock %}
+
+{% block content %}
+<div class="p-6 bg-gray-900 min-h-screen text-white">
+
+<h1 class="text-2xl font-bold mb-6">Analytics Overview</h1>
+
+<!-- QUICK STATS -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="p-4 bg-gray-800 rounded shadow">
+        <div>Total Grievances</div>
+        <div id="card-total" class="text-xl font-bold">0</div>
+    </div>
+    <div class="p-4 bg-gray-800 rounded shadow">
+        <div>Open</div>
+        <div id="card-open" class="text-xl font-bold">0</div>
+    </div>
+    <div class="p-4 bg-gray-800 rounded shadow">
+        <div>Resolved</div>
+        <div id="card-resolved" class="text-xl font-bold">0</div>
+    </div>
+    <div class="p-4 bg-gray-800 rounded shadow">
+        <div>Avg Resolution (days)</div>
+        <div id="card-sla" class="text-xl font-bold">—</div>
+    </div>
+</div>
+
+<!-- STATUS PIE CHART -->
+<div class="mb-6 bg-gray-800 p-4 rounded shadow">
+    <h2 class="text-xl mb-2">Grievance Status</h2>
+    <div style="height:180px;">
+        <canvas id="statusChart"></canvas>
+    </div>
+</div>
+
+<!-- TREND LINE CHART -->
+<div class="mb-8 bg-gray-800 p-4 rounded shadow">
+    <h2 class="text-xl mb-2">Daily Grievance Trend</h2>
+    <canvas id="trendChart" height="100"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ANALYTICS_API = "{% url 'Officer:officer_analytics_api' %}";
+
+async function fetchJSON(url){ const res = await fetch(url); return res.json(); }
+
+async function loadAnalytics(){
+    const data = await fetchJSON(ANALYTICS_API);
+
+    document.getElementById('card-total').textContent = data.total_grievances || 0;
+    document.getElementById('card-open').textContent = (data.pending || 0) + (data.in_progress || 0);
+    document.getElementById('card-resolved').textContent = data.resolved || 0;
+    document.getElementById('card-sla').textContent = data.avg_resolution_days || "—";
+
+    new Chart(document.getElementById('statusChart'),{
+        type:'pie',
+        data:{
+            labels:['Pending','In Progress','Resolved'],
+            datasets:[{
+                data:[data.pending||0,data.in_progress||0,data.resolved||0],
+                backgroundColor:['orange','blue','green']
+            }]
+        }
+    });
+
+    new Chart(document.getElementById('trendChart'),{
+        type:'line',
+        data:{
+            labels: data.daily_trend.map(item=>item.date),
+            datasets:[{
+                label:'Daily Grievances',
+                data:data.daily_trend.map(item=>item.count),
+                borderColor:'cyan',
+                fill:false,
+                tension:0.3
+            }]
+        }
+    });
+}
+
+loadAnalytics();
+</script>
+{% endblock %}
