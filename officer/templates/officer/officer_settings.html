@@ -1,0 +1,143 @@
+{% extends "officer/base_officer.html" %}
+{% block content %}
+
+<div class="flex justify-center items-start mt-10 px-4">
+
+  <!-- <div class="w-full max-w-3xl bg-white rounded-xl shadow-lg p-8"> -->
+<div class="w-full max-w-3xl bg-slate-900/90 backdrop-blur
+            border border-white/10 rounded-2xl shadow-2xl p-8">
+
+    <!-- Page Title -->
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-white-800">Account Settings</h2>
+      <p class="text-gray-400 mt-1">Manage your profile information and security</p>
+    </div>
+
+    <!-- ================= PROFILE SECTION ================= -->
+    <div class="mb-10">
+      <h3 class="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
+        👤 Profile Information
+      </h3>
+
+      <form id="profileForm" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <div>
+          <label class="text-sm text-gray-300">First Name</label>
+          <input type="text" id="first_name"
+
+  class="w-full mt-1 px-4 py-2 bg-slate-800 border border-white/10
+         text-white rounded-lg focus:ring focus:ring-blue-500/30">
+        </div>
+
+        <div>
+          <label class="text-sm text-gray-300">Last Name</label>
+          <input type="text" id="last_name"
+
+  class="w-full mt-1 px-4 py-2 bg-slate-800 border border-white/10
+         text-white rounded-lg focus:ring focus:ring-blue-500/30">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-sm text-gray-300">Email Address</label>
+          <input type="email" id="email"
+
+  class="w-full mt-1 px-4 py-2 bg-slate-800 border border-white/10
+         text-white rounded-lg focus:ring focus:ring-blue-500/30">
+        </div>
+
+        <div class="md:col-span-2 text-right mt-2">
+          <button
+            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+            Update Profile
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- ================= SECURITY SECTION ================= -->
+    <div>
+      <h3 class="text-lg font-semibold text-gray-300 mb-4 flex items-center gap-2">
+        🔐 Security
+      </h3>
+
+      <form id="passwordForm" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+        <div>
+          <label class="text-sm text-gray-300">Old Password</label>
+          <input type="password" id="old_password"
+
+  class="w-full mt-1 px-4 py-2 bg-slate-800 border border-white/10
+         text-white rounded-lg focus:ring focus:ring-blue-500/30">
+        </div>
+
+        <div>
+          <label class="text-sm text-gray-300">New Password</label>
+          <input type="password" id="new_password"
+
+  class="w-full mt-1 px-4 py-2 bg-slate-800 border border-white/10
+         text-white rounded-lg focus:ring focus:ring-blue-500/30">
+        </div>
+
+        <div class="md:col-span-2 text-right mt-2">
+          <button
+            class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition">
+            Change Password
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const token = localStorage.getItem("token");
+
+// Load profile data
+fetch("/officer/settings/api/profile/", {
+  headers: { "Authorization": "Bearer " + token }
+})
+.then(res => res.json())
+.then(data => {
+  document.getElementById("first_name").value = data.first_name || '';
+  document.getElementById("last_name").value = data.last_name || '';
+  document.getElementById("email").value = data.email || '';
+});
+
+// Update profile
+document.getElementById("profileForm").onsubmit = e => {
+  e.preventDefault();
+  fetch("/officer/settings/api/profile/", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      first_name: first_name.value,
+      last_name: last_name.value,
+      email: email.value
+    })
+  }).then(() => alert("Profile updated successfully"));
+};
+
+// Change password
+document.getElementById("passwordForm").onsubmit = e => {
+  e.preventDefault();
+  fetch("/officer/settings/api/change-password/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify({
+      old_password: old_password.value,
+      new_password: new_password.value
+    })
+  }).then(() => alert("Password changed successfully"));
+};
+</script>
+
+{% endblock %}
