@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Officer Panel</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+          crossorigin="anonymous"/>
+
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-900 text-white h-screen flex flex-col">
+
+<!-- Mobile Header -->
+<div class="md:hidden flex justify-between items-center p-4 border-b border-gray-700 bg-gray-900">
+    <div class="flex items-center gap-3">
+        <img src="{% static 'images/favicon.ico' %}" class="w-10 h-10 rounded-lg">
+        <span class="font-bold text-lg">Officer Panel</span>
+    </div>
+    <button id="mobile-menu-btn" class="text-white text-2xl">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+</div>
+
+<div class="flex flex-1 h-full">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar"
+           class="w-64 md:w-64 fixed md:static inset-y-0 left-0 transform 
+                  -translate-x-full md:translate-x-0 transition-transform duration-300 
+                  flex flex-col glass border-r border-gray-700 z-50">
+
+        <!-- Sidebar Header -->
+        <div class="flex items-center gap-3 p-6 border-b border-gray-700 md:border-none">
+            <img src="{% static 'images/favicon.ico' %}" class="w-12 h-12 rounded-lg">
+            <div>
+                <div class="font-bold text-xl">Officer Panel</div>
+                <div class="text-sm text-gray-300">Control Center</div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex flex-col flex-1 justify-between p-4 overflow-y-auto">
+
+            <ul class="space-y-3">
+                <li>
+                    <a href="{% url 'officer:officer_dashboard' %}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg
+                       {% if request.resolver_match.url_name == 'officer_dashboard' %}
+                           bg-white/20 text-white
+                       {% else %}
+                           hover:bg-white/10
+                       {% endif %}">
+                        <i class="fa-solid fa-house text-lg"></i> Dashboard
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'officer:officer_analytics' %}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg
+                       {% if request.resolver_match.url_name == 'officer_analytics' %}
+                           bg-white/20 text-white
+                       {% else %}
+                           hover:bg-white/10
+                       {% endif %}">
+                        <i class="fa-solid fa-chart-line text-lg"></i> Analytics
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'officer:officer_grievances' %}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg
+                       {% if request.resolver_match.url_name == 'officer_grievances' %}
+                           bg-white/20 text-white
+                       {% else %}
+                           hover:bg-white/10
+                       {% endif %}">
+                        <i class="fa-solid fa-file-lines text-lg"></i> Grievances
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{% url 'officer:officer_settings' %}"
+                       class="flex items-center gap-3 px-4 py-3 rounded-lg
+                       {% if request.resolver_match.url_name == 'officer_settings' %}
+                           bg-white/20 text-white
+                       {% else %}
+                           hover:bg-white/10
+                       {% endif %}">
+                        <i class="fa-solid fa-gear text-lg"></i> Settings
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Logout Button -->
+            <div class="mt-auto mb-6">
+                <a href="{% url 'logout' %}"
+                   class="w-full px-4 py-3 bg-gray-900 text-white rounded-full hover:bg-gray-700 hover:scale-105 transition-all shadow-md flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </a>
+            </div>
+
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT (Fixed version) -->
+    <main class="flex-1 p-6 overflow-auto">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</div>
+
+<!-- Mobile Sidebar Toggle -->
+<script>
+    const btn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.getElementById('sidebar');
+
+    btn.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+    });
+</script>
+
+</body>
+</html>
