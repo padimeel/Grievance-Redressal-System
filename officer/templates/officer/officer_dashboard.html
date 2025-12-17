@@ -1,0 +1,131 @@
+{% extends 'officer/base_officer.html' %}
+{% load static %}
+
+{% block content %}
+<div class="p-6 bg-gray-900 min-h-screen text-white">
+
+    <!-- DASHBOARD HEADER -->
+    <h1 class="text-3xl font-bold mb-8 text-center sm:text-left">Officer Dashboard</h1>
+
+    <!-- STATUS BOXES -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div class="bg-yellow-600 p-6 rounded-xl shadow-lg text-center hover:bg-yellow-500 transition">
+            <h3 class="text-lg font-semibold mb-2">Pending</h3>
+            <p id="small_pending" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-blue-600 p-6 rounded-xl shadow-lg text-center hover:bg-blue-500 transition">
+            <h3 class="text-lg font-semibold mb-2">In Progress</h3>
+            <p id="small_inprogress" class="text-2xl font-bold">0</p>
+        </div>
+        <div class="bg-green-600 p-6 rounded-xl shadow-lg text-center hover:bg-green-500 transition">
+            <h3 class="text-lg font-semibold mb-2">Resolved</h3>
+            <p id="small_resolved" class="text-2xl font-bold">0</p>
+        </div>
+    </div>
+
+    <!-- GRIEVANCE TABLE -->
+    <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-x-auto">
+        <h2 class="text-xl font-semibold mb-3">Grievances Assigned to You</h2>
+        <table class="min-w-full text-left rounded-lg overflow-hidden">
+            <thead class="bg-gray-700 text-gray-200">
+                <tr>
+                    <th class="px-4 py-2">ID</th>
+                    <th class="px-4 py-2">Citizen</th>
+                    <th class="px-4 py-2">Category</th>
+                    <th class="px-4 py-2">Description</th>
+                    <th class="px-4 py-2">Status</th>
+                </tr>
+            </thead>
+            <tbody id="grievanceTable" class="bg-gray-900 divide-y divide-gray-700">
+                <tr>
+                    <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- JS to fetch and show grievances -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tableBody = document.getElementById('grievanceTable');
+    let grievances = [];
+
+    fetch('/officer/get_grievances/')
+        .then(res => res.json())
+        .then(data => {
+            grievances = data.grievances.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+            renderTable();
+            updateStatusCounts();
+        });
+
+    function renderTable() {
+        tableBody.innerHTML = "";
+        if (grievances.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-400">No grievances found.</td></tr>`;
+            return;
+        }
+        grievances.forEach(g => {
+            const row = document.createElement('tr');
+            row.classList.add("hover:bg-gray-700","transition");
+            row.innerHTML = `
+                <td class="px-4 py-2">${g.id}</td>
+                <td class="px-4 py-2">${g.citizen}</td>
+                <td class="px-4 py-2">${g.category}</td>
+                <td class="px-4 py-2">${g.description}</td>
+                <td class="px-4 py-2">
+                    <select class="bg-gray-800 text-white border border-gray-600 rounded px-2 py-1"
+                        onchange="updateStatus(${g.id}, this.value)">
+                        <option value="Pending" ${g.status==="Pending"?"selected":""}>Pending</option>
+                        <option value="In Progress" ${g.status==="In Progress"?"selected":""}>In Progress</option>
+                        <option value="Resolved" ${g.status==="Resolved"?"selected":""}>Resolved</option>
+                    </select>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    function updateStatusCounts() {
+        const counts = {Pending:0,"In Progress":0,Resolved:0};
+        grievances.forEach(g => counts[g.status]++);
+        document.getElementById('small_pending').textContent = counts["Pending"];
+        document.getElementById('small_inprogress').textContent = counts["In Progress"];
+        document.getElementById('small_resolved').textContent = counts["Resolved"];
+    }
+
+    window.updateStatus = function(grievanceId,newStatus){
+        fetch('/officer/grievance/update-status/', {
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({id:grievanceId,status:newStatus})
+        })
+        .then(res=>res.json())
+        .then(data=>{
+            const gIndex = grievances.findIndex(g=>g.id===grievanceId);
+            if(gIndex>-1){ grievances[gIndex].status=newStatus; updateStatusCounts(); }
+        })
+        .catch(()=>{alert("Failed to update status");});
+    }
+
+    function getCookie(name){
+        let cookieValue = null;
+        if(document.cookie && document.cookie!==''){
+            const cookies = document.cookie.split(';');
+            for(let cookie of cookies){
+                cookie = cookie.trim();
+                if(cookie.startsWith(name+'=')){
+                    cookieValue = decodeURIComponent(cookie.substring(name.length+1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}
