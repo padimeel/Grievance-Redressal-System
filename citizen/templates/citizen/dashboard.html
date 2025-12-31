@@ -34,7 +34,7 @@
       <div class="flex items-center gap-4">
 
         <!-- PROFILE IMAGE -->
-        <a href="{% url 'citizen:profile_page' %}" class="inline-block">
+        <a href="{% url 'citizen:profile' %}" class="inline-block">
           <div class="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg border-2 border-white cursor-pointer">
             <i data-lucide="user" class="w-6 h-6"></i>
           </div>
@@ -54,7 +54,7 @@
           <i data-lucide="plus-circle" class="w-5 h-5"></i> 
               New Grievance
         </a>
-        <a href=""
+        <a href="{% url 'citizen:citizen_logout' %}"
             class="px-3 py-2 text-sm rounded-xl text-white font-semibold bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 shadow transition">
             <i data-lucide="log-out" class="w-4 h-4 inline"></i> Sign Out
         </a>
@@ -147,9 +147,13 @@
                     Feedback
                   </button>
                 {% endif %}
-                <a href="{% url 'citizen:submit_grievance' %}"
-                   class="px-3 py-1 border border-white/30 text-white rounded-md hover:bg-white/20 transition">
-                  View
+                <a href="{% url 'citizen:view_grievance' %}"
+                    class="px-4 py-1 text-white text-sm
+                      border border-white/40
+                      rounded-full hover:bg-white/10 transition">
+                        View
+                </a>
+
                 </a>
               </div>
             </div>
