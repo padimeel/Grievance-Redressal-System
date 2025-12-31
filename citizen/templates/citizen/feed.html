@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+.glass {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.star { font-size: 38px; cursor: pointer; color: #7c3aed; }
+.star.selected { color: #facc15; }
+
+.float-label label {
+    color: #ffffff !important;
+}
+
+</style>
+</head>
+
+<body class="bg-purple-900 min-h-screen p-10 text-white">
+
+<!-- DASHBOARD BUTTON -->
+
+
+<!-- ⭐ GRIEVANCE FORM ⭐ -->
+<div class="max-w-3xl mx-auto glass p-10 rounded-3xl shadow-2xl mb-16">
+<h2 class="text-center text-3xl font-bold text-purple-300 mb-8">Submit Grievance</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="grievance_submit">
+
+    <input name="title" required placeholder="Grievance Title"
+           class="w-full p-4 bg-transparent border border-purple-600 rounded-xl mb-4">
+
+    <textarea name="description" rows="4" required placeholder="Description"
+              class="w-full p-4 bg-transparent border border-purple-600 rounded-xl mb-4"></textarea>
+
+    <select name="category"
+            class="w-full p-3 rounded-lg bg-purple-700 border border-purple-300 mb-4" required>
+        <option value="">Select Category</option>
+        <option>Road</option>
+        <option>Water</option>
+        <option>Electricity</option>
+        <option>Sanitation</option>
+        <option>Others</option>
+    </select>
+
+    <input name="attachments" type="file"
+       class="w-full p-4 bg-transparent border border-purple-600 rounded-xl mb-4">
+       
+
+
+           <button type="submit"
+           class="px-6 py-2 text-lg text-white bg-gradient-to-r from-purple-500 to-pink-500 
+           rounded-lg hover:opacity-90 mx-auto block">
+           Submit Grievance
+       </button>
+       
+</form>
+</div>
+
+<!-- ⭐ FEEDBACK FORM ⭐ -->
+<div class="max-w-2xl mx-auto glass p-10 rounded-3xl shadow-2xl">
+<h2 class="text-center text-3xl font-bold text-purple-300 mb-6">Your Feedback</h2>
+
+<form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="feedback_submit">
+
+    <textarea name="message" rows="3" required
+              placeholder="Message"
+              class="w-full p-4 bg-transparent border border-purple-600 rounded-xl mb-4"></textarea>
+
+    <p class="font-semibold text-white">Rate Us</p>
+
+
+    <div class="flex gap-4 mt-2">
+        <span class="star" data-value="1">★</span>
+        <span class="star" data-value="2">★</span>
+        <span class="star" data-value="3">★</span>
+        <span class="star" data-value="4">★</span>
+        <span class="star" data-value="5">★</span>
+    </div>
+
+    <input type="hidden" id="rating" name="rating" required>
+
+    <button
+    class="px-6 py-2 text-lg text-white bg-gradient-to-r from-purple-500 to-pink-500 
+    rounded-lg hover:opacity-90 mx-auto block">
+    Submit Feedback
+</button>
+
+</form>
+</div>
+
+<script>
+const stars = document.querySelectorAll(".star");
+const ratingInput = document.getElementById("rating");
+
+stars.forEach(star => {
+    star.addEventListener("click", () => {
+        ratingInput.value = star.dataset.value;
+        stars.forEach(s => s.classList.remove("selected"));
+        stars.forEach(s => {
+            if (s.dataset.value <= ratingInput.value) s.classList.add("selected");
+        });
+    });
+});
+</script>
+
+</body>
+</html>
