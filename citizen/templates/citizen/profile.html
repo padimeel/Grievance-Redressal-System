@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Citizen Profile | GRS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen text-white"
+style="background: linear-gradient(135deg,#3b0c78,#8e2de2,#e100ff);">
+
+<div class="max-w-4xl mx-auto mt-10 bg-white/10 backdrop-blur-lg p-8 rounded-2xl">
+
+<h1 class="text-3xl font-bold mb-6">Citizen Profile</h1>
+
+<!-- ================= MESSAGES ================= -->
+{% if messages %}
+  {% for message in messages %}
+    <p class="{% if message.tags == 'error' %}text-red-300{% else %}text-green-300{% endif %} mb-3">
+      {{ message }}
+    </p>
+  {% endfor %}
+{% endif %}
+
+<!-- ================= PROFILE FORM ================= -->
+<form method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+
+<!-- PROFILE HEADER -->
+<div class="flex items-center gap-6">
+  <div class="relative w-32 h-32">
+    <img id="preview"
+         src="{% if profile.profile_image %}{{ profile.profile_image.url }}{% else %}https://via.placeholder.com/120{% endif %}"
+         class="w-32 h-32 rounded-full object-cover border">
+
+    <input type="file" name="profile_image" id="profileImage" class="hidden">
+    <label for="profileImage"
+           class="absolute bottom-0 right-0 bg-white p-2 rounded-full text-black cursor-pointer">
+      +
+    </label>
+  </div>
+
+  <div>
+    <h2 class="text-xl font-bold">
+      {{ user.get_full_name|default:user.username }}
+    </h2>
+    <p>ID: {{ user.id }}</p>
+  </div>
+</div>
+
+<hr class="my-6 border-white/30">
+
+<!-- INPUT FIELDS -->
+<input type="text" name="name" id="name"
+       value="{{ user.get_full_name|default:user.username }}"
+       class="w-full mb-3 p-3 bg-white/10 rounded"
+       readonly>
+
+<input type="email" name="email" id="email"
+       value="{{ user.email }}"
+       class="w-full mb-3 p-3 bg-white/10 rounded"
+       readonly>
+
+<input type="text" name="phone" id="phone"
+       value="{{ profile.phone }}"
+       placeholder="Phone"
+       class="w-full mb-3 p-3 bg-white/10 rounded"
+       readonly>
+
+<textarea name="address" id="address"
+          placeholder="Address"
+          class="w-full mb-3 p-3 bg-white/10 rounded"
+          readonly>{{ profile.address }}</textarea>
+
+<!-- BUTTONS -->
+<div class="flex gap-4">
+  <button type="button" id="editBtn"
+          class="bg-blue-500 px-6 py-2 rounded">
+    Edit
+  </button>
+
+  <button type="submit"
+          name="save_profile"
+          id="saveBtn"
+          class="hidden bg-green-500 px-6 py-2 rounded">
+    Save
+  </button>
+</div>
+
+</form>
+
+<!-- ================= CHANGE PASSWORD ================= -->
+<hr class="my-8 border-white/30">
+
+<h2 class="text-2xl font-bold mb-4">Change Password</h2>
+
+<form method="POST">
+{% csrf_token %}
+
+<input type="password" name="old_password"
+       placeholder="Old Password"
+       class="w-full mb-3 p-3 bg-white/10 rounded"
+       required>
+
+<input type="password" name="new_password"
+       placeholder="New Password"
+       class="w-full mb-3 p-3 bg-white/10 rounded"
+       required>
+
+<input type="password" name="confirm_password"
+       placeholder="Confirm New Password"
+       class="w-full mb-4 p-3 bg-white/10 rounded"
+       required>
+
+<button type="submit" name="change_password"
+        class="bg-red-500 px-6 py-2 rounded">
+  Change Password
+</button>
+</form>
+
+</div>
+
+<!-- ================= JS ================= -->
+<script>
+const editBtn = document.getElementById("editBtn");
+const saveBtn = document.getElementById("saveBtn");
+const fields = ["phone","address"];
+
+editBtn.onclick = () => {
+  fields.forEach(id => document.getElementById(id).readOnly = false);
+  editBtn.classList.add("hidden");
+  saveBtn.classList.remove("hidden");
+};
+
+document.getElementById("profileImage").onchange = e => {
+  document.getElementById("preview").src =
+    URL.createObjectURL(e.target.files[0]);
+};
+</script>
+
+</body>
+</html>
